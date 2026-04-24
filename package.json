@@ -1,0 +1,15 @@
+{
+  "name": "play-store-explorer",
+  "version": "2.0.0",
+  "description": "Google Play Store explorer using google-play-scraper v10",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "google-play-scraper": "10.1.2"
+  }
+}

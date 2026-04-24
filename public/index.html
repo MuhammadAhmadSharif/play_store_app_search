@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">▶</span>
+    <span class="logo-text">Play<strong>Explorer</strong></span>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-tab="search"><span class="nav-icon">⌕</span> Search</button>
+    <button class="nav-item" data-tab="top"><span class="nav-icon">↑</span> Top Charts</button>
+    <button class="nav-item" data-tab="lookup"><span class="nav-icon">◎</span> App Lookup</button>
+    <button class="nav-item" data-tab="developer"><span class="nav-icon">✦</span> Developer</button>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="powered-badge">Powered by google-play-scraper</span>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <button class="menu-toggle" id="menuToggle">☰</button>
+    <div class="topbar-title" id="topbarTitle">Search Apps</div>
+    <div class="topbar-lang">
+      <select id="globalLang">
+        <option value="en">🌐 EN</option>
+        <option value="es">ES</option>
+        <option value="fr">FR</option>
+        <option value="de">DE</option>
+        <option value="zh">ZH</option>
+        <option value="ja">JA</option>
+        <option value="ar">AR</option>
+        <option value="hi">HI</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- SEARCH TAB -->
+  <section class="tab-panel active" id="tab-search">
+    <div class="filter-bar">
+
+      <div class="search-row">
+        <div class="autocomplete-wrap">
+          <input class="search-input" id="searchQuery" type="text" autocomplete="off"
+            placeholder="Keyword (optional) — leave blank to browse all apps by filters below" />
+          <ul class="suggest-list" id="suggestList"></ul>
+        </div>
+        <button class="btn-primary" id="searchBtn">Search</button>
+      </div>
+
+      <div class="hint-bar">
+        <span class="hint-icon">💡</span>
+        Leave keyword empty and set <strong>Release date</strong> + <strong>Min installs 1K+</strong> to discover recently released apps.
+      </div>
+
+      <div class="filter-section-label">Filters</div>
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Category</label>
+          <select id="searchCategory"><option value="">All categories</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Sort by</label>
+          <select id="searchSort">
+            <option value="1">Relevance</option>
+            <option value="2">Rating</option>
+            <option value="3">Newest first</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Results limit</label>
+          <select id="searchNum">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Price</label>
+          <select id="searchPrice">
+            <option value="">All</option>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Min installs</label>
+          <select id="searchMinInstalls">
+            <option value="">Any</option>
+            <option value="1000" selected>1K+</option>
+            <option value="5000">5K+</option>
+            <option value="10000">10K+</option>
+            <option value="50000">50K+</option>
+            <option value="100000">100K+</option>
+            <option value="500000">500K+</option>
+            <option value="1000000">1M+</option>
+            <option value="10000000">10M+</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Max installs</label>
+          <select id="searchMaxInstalls">
+            <option value="">Any</option>
+            <option value="10000">Under 10K</option>
+            <option value="100000">Under 100K</option>
+            <option value="1000000">Under 1M</option>
+            <option value="10000000">Under 10M</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Min rating</label>
+          <select id="searchMinRating">
+            <option value="">Any</option>
+            <option value="3">3.0+</option>
+            <option value="3.5">3.5+</option>
+            <option value="4">4.0+</option>
+            <option value="4.5">4.5+</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Min reviews</label>
+          <select id="searchMinReviews">
+            <option value="">Any</option>
+            <option value="100">100+</option>
+            <option value="1000">1K+</option>
+            <option value="10000">10K+</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Content rating</label>
+          <select id="searchContent">
+            <option value="">All</option>
+            <option value="Everyone">Everyone</option>
+            <option value="Teen">Teen</option>
+            <option value="Mature 17+">Mature 17+</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-section-label" style="margin-top:4px">Release date</div>
+      <div class="date-presets">
+        <span class="preset-label">Quick:</span>
+        <button class="chip" onclick="setDatePreset(7)">7 days</button>
+        <button class="chip" onclick="setDatePreset(30)">30 days</button>
+        <button class="chip" onclick="setDatePreset(90)">3 months</button>
+        <button class="chip" onclick="setDatePreset(180)">6 months</button>
+        <button class="chip" onclick="setDatePreset(365)">1 year</button>
+        <button class="chip" onclick="setDatePreset(730)">2 years</button>
+        <button class="chip chip-clear" onclick="clearDates()">✕ Clear</button>
+      </div>
+      <div class="filter-grid" style="margin-top:8px">
+        <div class="filter-group">
+          <label>Released after</label>
+          <input type="date" id="searchReleasedAfter" />
+        </div>
+        <div class="filter-group">
+          <label>Released before</label>
+          <input type="date" id="searchReleasedBefore" />
+        </div>
+      </div>
+
+      <div class="quick-searches">
+        <span class="preset-label">Quick discover:</span>
+        <button class="chip chip-action" onclick="quickDiscover(7, 'TOOLS')">New Tools (7d)</button>
+        <button class="chip chip-action" onclick="quickDiscover(30, 'GAME')">New Games (30d)</button>
+        <button class="chip chip-action" onclick="quickDiscover(30, 'PRODUCTIVITY')">New Productivity (30d)</button>
+        <button class="chip chip-action" onclick="quickDiscover(90, '')">All Recent (90d)</button>
+      </div>
+
+    </div>
+    <div class="results-area" id="searchResults">
+      <div class="empty-state">
+        <div class="empty-icon">⌕</div>
+        <p>Set filters and click Search — keyword is optional</p>
+        <p class="empty-sub">Use release date + min installs to discover new trending apps</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOP CHARTS TAB -->
+  <section class="tab-panel" id="tab-top">
+    <div class="filter-bar">
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Collection</label>
+          <select id="topCollection">
+            <option value="TOP_FREE">Top Free</option>
+            <option value="TOP_PAID">Top Paid</option>
+            <option value="GROSSING">Top Grossing</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Category</label>
+          <select id="topCategory"><option value="">All</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Results</label>
+          <select id="topNum">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" id="topBtn">Load Charts</button>
+    </div>
+    <div class="results-area" id="topResults">
+      <div class="empty-state"><div class="empty-icon">↑</div><p>Load top charts to explore trending apps</p></div>
+    </div>
+  </section>
+
+  <!-- LOOKUP TAB -->
+  <section class="tab-panel" id="tab-lookup">
+    <div class="filter-bar">
+      <div class="search-row">
+        <input class="search-input" id="lookupId" type="text" placeholder="Package name e.g. com.spotify.music" />
+        <button class="btn-primary" id="lookupBtn">Fetch</button>
+      </div>
+      <div class="quick-ids">
+        <span class="preset-label">Examples:</span>
+        <button class="chip" onclick="quickLookup('com.google.android.apps.translate')">Translate</button>
+        <button class="chip" onclick="quickLookup('com.spotify.music')">Spotify</button>
+        <button class="chip" onclick="quickLookup('com.whatsapp')">WhatsApp</button>
+        <button class="chip" onclick="quickLookup('com.instagram.android')">Instagram</button>
+        <button class="chip" onclick="quickLookup('com.netflix.mediaclient')">Netflix</button>
+      </div>
+    </div>
+    <div class="results-area" id="lookupResults">
+      <div class="empty-state"><div class="empty-icon">◎</div><p>Enter a package name to fetch full app details</p></div>
+    </div>
+  </section>
+
+  <!-- DEVELOPER TAB -->
+  <section class="tab-panel" id="tab-developer">
+    <div class="filter-bar">
+      <div class="search-row">
+        <input class="search-input" id="devId" type="text" placeholder="Developer ID e.g. 5700313618786177705" />
+        <button class="btn-primary" id="devBtn">Fetch Apps</button>
+      </div>
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Results</label>
+          <select id="devNum">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+          </select>
+        </div>
+      </div>
+      <div class="quick-ids">
+        <span class="preset-label">Examples:</span>
+        <button class="chip" onclick="quickDev('5700313618786177705')">Google LLC</button>
+        <button class="chip" onclick="quickDev('Spotify AB')">Spotify AB</button>
+        <button class="chip" onclick="quickDev('Meta Platforms, Inc.')">Meta</button>
+      </div>
+    </div>
+    <div class="results-area" id="devResults">
+      <div class="empty-state"><div class="empty-icon">✦</div><p>Enter a developer ID to see all their apps</p></div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
