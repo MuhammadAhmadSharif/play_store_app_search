@@ -620,6 +620,32 @@ body {
 .hint-bar strong { color: var(--accent); }
 .hint-icon { font-size: 14px; flex-shrink: 0; }
 
+/* ── Search scope ───────────────────────────────────── */
+.scope-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.scope-toggle input {
+  accent-color: var(--accent);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.scope-toggle span { line-height: 1.45; }
+.scope-toggle strong {
+  color: var(--text);
+  display: block;
+  font-size: 12.5px;
+  margin-bottom: 1px;
+}
+
 /* ── Filter section label ───────────────────────────── */
 .filter-section-label {
   font-size: 10px;

@@ -10,8 +10,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === __filename;
 
+app.disable('etag');
 app.use(cors());
 app.use(express.json());
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -91,6 +98,25 @@ function categoryValue(category) {
   return category ? (gplay.category[category] || category) : '';
 }
 
+function categoryIdsForDiscovery() {
+  return Object.keys(gplay.category).filter(id =>
+    !['APPLICATION', 'GAME', 'FAMILY'].includes(id)
+  );
+}
+
+function uniqueByAppId(items) {
+  const seen = new Set();
+  const results = [];
+
+  for (const item of items.flat()) {
+    if (!item?.appId || seen.has(item.appId)) continue;
+    seen.add(item.appId);
+    results.push(item);
+  }
+
+  return results;
+}
+
 function matchesCategory(app, category) {
   const selected = categoryValue(category);
   if (!selected) return true;
@@ -167,6 +193,25 @@ function candidateTargetForDateDiscovery(category, fetchNum) {
   return Math.min(Math.max(fetchNum * multiplier, minimum), maximum);
 }
 
+function candidateTargetForAllCategoryDiscovery(fetchNum, wantsDateFilter) {
+  const multiplier = wantsDateFilter ? 8 : 5;
+  const minimum = wantsDateFilter ? 140 : 90;
+  const maximum = wantsDateFilter ? 260 : 180;
+  return Math.min(Math.max(fetchNum * multiplier, minimum), maximum);
+}
+
+function allCategorySearchTerms(categoryId) {
+  const selected = categoryValue(categoryId);
+
+  if (selected?.startsWith('GAME_')) {
+    const label = selected.toLowerCase().replace(/_/g, ' ');
+    return [`new ${label}`, `${label} 2026`];
+  }
+
+  const label = selected.toLowerCase().replace(/_/g, ' ');
+  return [`new ${label} app`, `best ${label} app`];
+}
+
 async function mapLimit(items, limit, mapper) {
   const results = new Array(items.length);
   let cursor = 0;
@@ -196,6 +241,59 @@ async function enrichWithDetails(candidates, { lang, country }) {
   });
 }
 
+async function fallbackSearchIds(term, { lang, country, num }) {
+  const url = new URL('https://play.google.com/store/search');
+  url.searchParams.set('q', term);
+  url.searchParams.set('c', 'apps');
+  url.searchParams.set('hl', lang);
+  url.searchParams.set('gl', country);
+
+  const response = await fetch(url, {
+    headers: {
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',
+      'accept-language': `${lang}-${country.toUpperCase()},${lang};q=0.9,en;q=0.8`,
+    },
+  });
+
+  if (!response.ok) return [];
+
+  const html = await response.text();
+  const ids = [];
+  const seen = new Set();
+  const appIdPattern = /\/store\/apps\/details\?id=([A-Za-z0-9._]+)/g;
+
+  for (const match of html.matchAll(appIdPattern)) {
+    const appId = decodeURIComponent(match[1]);
+    if (seen.has(appId)) continue;
+    seen.add(appId);
+    ids.push(appId);
+    if (ids.length >= num) break;
+  }
+
+  return ids;
+}
+
+async function searchCandidates(opts, { allowFallback = true, detailFallback = false } = {}) {
+  const results = await gplay.search(opts).catch(() => []);
+  if (results.length) return results;
+  if (!allowFallback) return [];
+
+  const ids = await fallbackSearchIds(opts.term, {
+    lang: opts.lang || 'en',
+    country: opts.country || 'us',
+    num: opts.num || 20,
+  }).catch(() => []);
+
+  const candidates = ids.map(appId => ({
+    appId,
+    url: `https://play.google.com/store/apps/details?id=${encodeURIComponent(appId)}`,
+  }));
+
+  return detailFallback
+    ? enrichWithDetails(candidates, { lang: opts.lang || 'en', country: opts.country || 'us' })
+    : candidates;
+}
+
 // ─── routes ─────────────────────────────────────────────────────────────────
 
 // Search apps — keyword is now OPTIONAL.
@@ -206,7 +304,7 @@ app.get('/api/search', async (req, res) => {
     const {
       q = '', category, sort = '1', num = '50', lang = 'en', country = 'us',
       minInstalls, maxInstalls, minRating, minReviews,
-      price, contentRating, releasedAfter, releasedBefore,
+      price, contentRating, releasedAfter, releasedBefore, allCategories = '',
     } = req.query;
 
     const sortMap = {
@@ -219,11 +317,77 @@ app.get('/api/search', async (req, res) => {
     const wantsDateFilter = releasedAfter || releasedBefore;
     const fetchNum = Math.min(parseInt(num) || 50, 250);
     const qTerm = q.trim();
-    const needsDetailEnrichment = Boolean(wantsDateFilter || (qTerm && category));
+    const searchAllCategories = allCategories === 'true' && !category;
+    const needsDetailEnrichment = Boolean(wantsDateFilter || contentRating || (qTerm && category));
 
-    if (qTerm) {
+    if (searchAllCategories) {
+      const categoryIds = categoryIdsForDiscovery();
+      const targetCandidates = candidateTargetForAllCategoryDiscovery(fetchNum, wantsDateFilter);
+
+      if (qTerm) {
+        const keywordTarget = Math.min(Math.max(fetchNum * 2, 20), 80);
+        results = await searchCandidates({
+          term: qTerm,
+          num: keywordTarget,
+          lang,
+          country,
+          ...(sortMap[sort] != null ? { sort: sortMap[sort] } : {}),
+          fullDetail: false,
+        }, { detailFallback: true });
+      } else if (wantsDateFilter) {
+        const tasks = categoryIds.flatMap(categoryId =>
+          allCategorySearchTerms(categoryId).map(term => ({ categoryId, term }))
+        );
+        const perTerm = Math.max(2, Math.ceil(targetCandidates / tasks.length));
+        const batches = await mapLimit(tasks, 6, ({ categoryId, term }) =>
+          searchCandidates({
+            term,
+            num: Math.min(perTerm, 12),
+            lang,
+            country,
+            sort: gplay.sort.NEWEST,
+            category: categoryValue(categoryId),
+            fullDetail: false,
+          }, { allowFallback: false }).catch(() => [])
+        );
+        results = uniqueByAppId(batches).slice(0, targetCandidates);
+        if (!results.length) {
+          const fallbackBatches = await mapLimit(termsForDateDiscovery(''), 6, term =>
+            searchCandidates({
+              term,
+              num: Math.ceil(targetCandidates / termsForDateDiscovery('').length),
+              lang,
+              country,
+              sort: gplay.sort.NEWEST,
+              fullDetail: false,
+            }).catch(() => [])
+          );
+          results = uniqueByAppId(fallbackBatches).slice(0, targetCandidates);
+        }
+      } else {
+        const collections = [
+          gplay.collection.TOP_FREE,
+          gplay.collection.TOP_PAID,
+          gplay.collection.GROSSING,
+        ];
+        const tasks = categoryIds.flatMap(categoryId =>
+          collections.map(collection => ({ categoryId, collection }))
+        );
+        const perTask = Math.max(1, Math.ceil(targetCandidates / tasks.length));
+        const batches = await mapLimit(tasks, 8, ({ categoryId, collection }) =>
+          gplay.list({
+            collection,
+            category: categoryValue(categoryId),
+            num: Math.min(perTask + 1, 10),
+            lang,
+            country,
+          }).catch(() => [])
+        );
+        results = uniqueByAppId(batches).slice(0, targetCandidates);
+      }
+    } else if (qTerm) {
       // ── keyword search ──────────────────────────────────────────────────
-      results = await gplay.search({
+      results = await searchCandidates({
         term: qTerm,
         num: wantsDateFilter ? Math.min(Math.max(fetchNum * 4, 80), 220) : fetchNum,
         lang,
@@ -231,7 +395,7 @@ app.get('/api/search', async (req, res) => {
         ...(sortMap[sort] != null ? { sort: sortMap[sort] } : {}),
         ...(category ? { category: categoryValue(category) } : {}),
         fullDetail: false,
-      });
+      }, { detailFallback: !wantsDateFilter });
     } else if (wantsDateFilter) {
       // ── no keyword + date filter: gather candidates, then fetch full details ──
       // gplay.list() returns TOP_FREE/TOP_PAID charts which are dominated by
@@ -248,7 +412,7 @@ app.get('/api/search', async (req, res) => {
       const perTerm = Math.ceil(targetCandidates / broadTerms.length); // over-fetch to survive filtering
 
       const fetches = broadTerms.map(term =>
-        gplay.search({
+        searchCandidates({
           term,
           num: Math.min(perTerm, 250),
           lang,
@@ -326,10 +490,31 @@ app.get('/api/search', async (req, res) => {
     const limit = Math.min(parseInt(num) || 50, 250);
     apps = apps.slice(0, limit);
 
-    res.json({ total: apps.length, apps, enriched: needsDetailEnrichment, scanned });
+    res.json({
+      total: apps.length,
+      apps,
+      enriched: needsDetailEnrichment,
+      scanned,
+      scope: searchAllCategories ? 'all-categories' : 'standard',
+    });
   } catch (err) {
     console.error('Search error:', err.message);
     res.status(500).json({ error: err.message || 'Search failed' });
+  }
+});
+
+// Autocomplete suggestions
+app.get('/api/suggest', async (req, res) => {
+  try {
+    const { q = '', lang = 'en', country = 'us' } = req.query;
+    const term = q.trim();
+    if (term.length < 2) return res.json([]);
+
+    const results = await gplay.suggest({ term, lang, country });
+    res.json(Array.isArray(results) ? results.slice(0, 8) : []);
+  } catch (err) {
+    console.error('Suggest error:', err.message);
+    res.status(500).json({ error: err.message || 'Could not fetch suggestions' });
   }
 });
 
@@ -424,13 +609,22 @@ app.get('/api/categories', (req, res) => {
 });
 
 // Serve frontend
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 if (isDirectRun) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Play Store Explorer running at http://localhost:${PORT}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Stop the other server or run with PORT=3001 npm start.`);
+      process.exit(1);
+    }
+
+    throw err;
   });
 }
 

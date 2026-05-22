@@ -1,5 +1,17 @@
 const API = '';
 
+async function fetchJson(url) {
+  const res = await fetch(url, { cache: 'no-store' });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!res.ok) {
+    throw new Error(data?.error || `Request failed (${res.status})`);
+  }
+
+  return data;
+}
+
 /* ── Formatters ─────────────────────────────────────── */
 function fmtInstalls(n) {
   if (n == null) return '—';
@@ -163,15 +175,15 @@ async function runSearch() {
     releasedAfter,
     releasedBefore,
     contentRating: document.getElementById('searchContent').value,
+    allCategories: document.getElementById('searchAllCategories').checked ? 'true' : '',
   });
 
   try {
-    const res  = await fetch(`${API}/api/search?${params}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Search failed');
+    const data = await fetchJson(`${API}/api/search?${params}`);
 
     const parts = [];
     if (q)            parts.push(`keyword: <span>"${q}"</span>`);
+    if (data.scope === 'all-categories') parts.push('scope: <span>all categories</span>');
     if (wantDate)     parts.push(`released: <span>${releasedAfter||'…'} → ${releasedBefore||'now'}</span>`);
     if (minInstalls)  parts.push(`min installs: <span>${fmtInstalls(parseInt(minInstalls))}</span>`);
     const note = data.enriched ? ` <span class="meta-note">(* = updated date used as proxy where released date unavailable)</span>` : '';
@@ -202,8 +214,7 @@ async function runTop() {
   btn.disabled=true; renderLoading(out);
   const params=new URLSearchParams({ collection:document.getElementById('topCollection').value, category:document.getElementById('topCategory').value, num:document.getElementById('topNum').value, lang:document.getElementById('globalLang').value });
   try {
-    const res=await fetch(`${API}/api/top?${params}`), data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Failed');
+    const data=await fetchJson(`${API}/api/top?${params}`);
     renderGrid(out,data.apps,true);
   } catch(e) { renderError(out,e.message); }
   btn.disabled=false;
@@ -216,9 +227,7 @@ async function runLookup(appId) {
   const btn=document.getElementById('lookupBtn'), out=document.getElementById('lookupResults');
   btn.disabled=true; renderLoading(out);
   try {
-    const res=await fetch(`${API}/api/app/${encodeURIComponent(id)}?lang=${document.getElementById('globalLang').value}`);
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Failed');
+    const data=await fetchJson(`${API}/api/app/${encodeURIComponent(id)}?lang=${document.getElementById('globalLang').value}`);
     out.innerHTML=detailView(data);
   } catch(e) { renderError(out,e.message); }
   btn.disabled=false;
@@ -233,9 +242,7 @@ async function runDev(devId) {
   btn.disabled=true; renderLoading(out);
   const params=new URLSearchParams({ num:document.getElementById('devNum').value, lang:document.getElementById('globalLang').value });
   try {
-    const res=await fetch(`${API}/api/developer/${encodeURIComponent(id)}?${params}`);
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Failed');
+    const data=await fetchJson(`${API}/api/developer/${encodeURIComponent(id)}?${params}`);
     renderGrid(out,data.apps,false);
   } catch(e) { renderError(out,e.message); }
   btn.disabled=false;
@@ -248,9 +255,7 @@ async function openDetail(appId) {
   overlay.classList.add('open');
   body.innerHTML=`<div class="loading-state"><div class="spinner"></div><span>Loading…</span></div>`;
   try {
-    const res=await fetch(`${API}/api/app/${encodeURIComponent(appId)}?lang=${document.getElementById('globalLang').value}`);
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Failed');
+    const data=await fetchJson(`${API}/api/app/${encodeURIComponent(appId)}?lang=${document.getElementById('globalLang').value}`);
     body.innerHTML=detailView(data);
   } catch(e) { body.innerHTML=`<div class="error-state">⚠ ${e.message}</div>`; }
 }
@@ -260,9 +265,7 @@ async function loadSimilar(appId) {
   const extra=document.getElementById('detail-extra');
   extra.innerHTML=`<div class="loading-state"><div class="spinner"></div></div>`;
   try {
-    const res=await fetch(`${API}/api/similar/${encodeURIComponent(appId)}?lang=${document.getElementById('globalLang').value}`);
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error);
+    const data=await fetchJson(`${API}/api/similar/${encodeURIComponent(appId)}?lang=${document.getElementById('globalLang').value}`);
     extra.innerHTML=`<div class="detail-section-title" style="margin-top:1.5rem">Similar apps</div><div class="app-grid" style="margin-top:.75rem">${data.apps.map(a=>appCard(a)).join('')}</div>`;
   } catch(e){ extra.innerHTML=`<div class="error-state">⚠ ${e.message}</div>`; }
 }
@@ -270,9 +273,7 @@ async function loadReviews(appId) {
   const extra=document.getElementById('detail-extra');
   extra.innerHTML=`<div class="loading-state"><div class="spinner"></div></div>`;
   try {
-    const res=await fetch(`${API}/api/reviews/${encodeURIComponent(appId)}?lang=${document.getElementById('globalLang').value}&num=10`);
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error);
+    const data=await fetchJson(`${API}/api/reviews/${encodeURIComponent(appId)}?lang=${document.getElementById('globalLang').value}&num=10`);
     const html=data.reviews.map(r=>`<div class="review-card"><div class="review-header"><span class="review-user">${r.userName||'Anonymous'}</span><span class="review-rating">${'★'.repeat(r.score||0)}${'☆'.repeat(5-(r.score||0))}</span></div><div class="review-text">${r.text||'—'}</div><div class="review-date">${fmtDate(r.date)}</div></div>`).join('');
     extra.innerHTML=`<div class="detail-section-title" style="margin-top:1.5rem">Reviews (${data.reviews.length})</div><div style="margin-top:.75rem">${html}</div>`;
   } catch(e){ extra.innerHTML=`<div class="error-state">⚠ ${e.message}</div>`; }
@@ -281,9 +282,7 @@ async function loadDev(devId) {
   const extra=document.getElementById('detail-extra');
   extra.innerHTML=`<div class="loading-state"><div class="spinner"></div></div>`;
   try {
-    const res=await fetch(`${API}/api/developer/${encodeURIComponent(devId)}?lang=${document.getElementById('globalLang').value}&num=20`);
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error);
+    const data=await fetchJson(`${API}/api/developer/${encodeURIComponent(devId)}?lang=${document.getElementById('globalLang').value}&num=20`);
     extra.innerHTML=`<div class="detail-section-title" style="margin-top:1.5rem">More by this developer</div><div class="app-grid" style="margin-top:.75rem">${data.apps.map(a=>appCard(a)).join('')}</div>`;
   } catch(e){ extra.innerHTML=`<div class="error-state">⚠ ${e.message}</div>`; }
 }
@@ -311,7 +310,7 @@ function switchTab(name) {
 /* ── Categories ─────────────────────────────────────── */
 async function loadCategories() {
   try {
-    const res=await fetch(`${API}/api/categories`), cats=await res.json();
+    const cats=await fetchJson(`${API}/api/categories`);
     ['searchCategory','topCategory'].forEach(id=>{
       const sel=document.getElementById(id);
       cats.forEach(c=>{
@@ -332,8 +331,7 @@ let suggestActive = -1;
 async function fetchSuggestions(q) {
   if (!q || q.length < 2) { closeSuggest(); return; }
   try {
-    const res  = await fetch(`${API}/api/suggest?q=${encodeURIComponent(q)}&lang=${document.getElementById('globalLang').value}`);
-    const data = await res.json();
+    const data = await fetchJson(`${API}/api/suggest?q=${encodeURIComponent(q)}&lang=${document.getElementById('globalLang').value}`);
     showSuggest(Array.isArray(data) ? data : []);
   } catch(_) {}
 }
