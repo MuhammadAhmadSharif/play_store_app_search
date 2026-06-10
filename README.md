@@ -17,26 +17,51 @@ npm start
 
 **Node.js 18+ required** (ESM + `--watch` support).
 
-## Vercel deployment
+## Recommended deployment
 
-This repo is set up for Vercel with:
+The Trending Discovery scan can run longer than Vercel's serverless timeout.
+Use Vercel for the static frontend, and deploy the Express API to a normal Node
+host such as Render or Railway.
 
-- `public/` served as static assets
-- `api/index.js` exposing the Express app as a serverless function
-- `vercel.json` routing all `/api/*` requests into that function
+### 1. Deploy backend API to Render
 
-Deploy steps:
+This repo includes `render.yaml`.
 
-```bash
-npm install
-vercel
+Render settings:
+
+- Build command: `npm install`
+- Start command: `npm start`
+- Health check path: `/api/categories`
+
+After deploy, Render will give you a URL like:
+
+```text
+https://play-explorer-api.onrender.com
 ```
 
-For production:
+### 2. Point frontend to backend
+
+Edit `public/config.js`:
+
+```js
+window.PLAY_EXPLORER_API_BASE = 'https://play-explorer-api.onrender.com';
+```
+
+Keep it empty for local same-origin development:
+
+```js
+window.PLAY_EXPLORER_API_BASE = '';
+```
+
+### 3. Deploy frontend to Vercel
+
+Vercel now serves only the static frontend from `public/`.
 
 ```bash
 vercel --prod
 ```
+
+Do not route `/api/*` through Vercel for the Trending Discovery backend.
 
 ## Project structure
 
@@ -46,9 +71,11 @@ play-explorer/
 │   └── index.js          # Express API — ESM, uses import gplay from 'google-play-scraper'
 ├── public/
 │   ├── index.html
+│   ├── config.js         # Frontend API base URL for separate backend deployment
 │   ├── css/style.css
 │   └── js/app.js
 ├── package.json          # "type": "module" ← required for v10
+├── render.yaml           # Render backend deployment blueprint
 └── README.md
 ```
 

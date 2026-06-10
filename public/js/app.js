@@ -1,4 +1,4 @@
-const API = '';
+const API = (window.PLAY_EXPLORER_API_BASE || '').replace(/\/$/, '');
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, { cache: 'no-store', ...options });
