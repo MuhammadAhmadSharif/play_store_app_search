@@ -21,6 +21,310 @@ app.use('/api', (_req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, '../public')));
 
+const TRENDING_KEYWORDS = [...new Set([
+  // ── AI & Machine Learning ──────────────────────────────────────────────
+  'ai assistant', 'ai chat', 'ai image generator', 'chatgpt', 'ai video',
+  'ai photo editor', 'ai avatar', 'ai art', 'ai writing', 'ai keyboard',
+  'ai voice', 'ai music', 'ai translator', 'ai tutor', 'ai coding',
+  'ai detector', 'ai summarizer', 'ai search', 'ai companion', 'ai girlfriend',
+  'ai boyfriend', 'ai character', 'ai roleplay', 'ai story', 'ai script',
+  'ai presentation', 'ai spreadsheet', 'ai email', 'ai notes', 'ai calendar',
+  'ai dubbing', 'ai face swap', 'ai background', 'ai upscale', 'ai colorize',
+  'ai manga', 'ai comic', 'ai anime filter', 'ai retouch', 'ai wallpaper',
+  'ai chatbot', 'ai plugin', 'ai widget', 'ai sticker', 'ai object remover',
+  'llm', 'gpt', 'gemini', 'claude ai', 'stable diffusion',
+  'midjourney', 'text to image', 'text to video', 'text to speech', 'speech to text',
+  'voice clone', 'deepfake detector', 'ai news', 'ai finance', 'ai health',
+  'ai logo', 'ai poster', 'ai thumbnail', 'ai caption', 'ai hashtag',
+  'ai resume', 'ai cover letter', 'ai interview', 'ai feedback', 'ai coach',
+
+  // ── Speed & Safety / Traffic / Radar ─────────────────────────────────
+  'speed camera', 'radar detector', 'speed trap', 'traffic camera', 'red light camera',
+  'speed limit', 'overspeed alert', 'speed warning', 'speed checker', 'speedometer',
+  'gps speedometer', 'hud speedometer', 'car speedometer', 'bike speedometer', 'digital speedometer',
+  'police radar', 'radar alert', 'laser detector', 'lidar detector', 'speed gun',
+  'traffic alert', 'road hazard', 'accident alert', 'road conditions', 'road report',
+  'dashcam', 'car camera', 'drive recorder', 'dash recorder', 'blackbox car',
+  'drive safe', 'safe driving', 'driver score', 'driving behavior', 'harsh braking',
+  'drunk driving', 'drowsy driving', 'fatigue alert', 'driver alert', 'eyes on road',
+  'traffic jam', 'traffic update', 'congestion alert', 'road closure', 'detour',
+  'waze clone', 'google maps clone', 'here maps', 'tomtom', 'offline gps',
+  'toll calculator', 'toll road', 'highway info', 'motorway app', 'expressway',
+  'fuel price', 'petrol price', 'gas station', 'nearest pump', 'fuel tracker',
+  'parking meter', 'parking timer', 'parking reminder', 'parking ticket', 'parking finder',
+  'car wash', 'car service', 'mechanic finder', 'breakdown assist', 'tow truck',
+  'road trip planner', 'route optimizer', 'multi stop route', 'waypoint planner', 'convoy app',
+
+  // ── Navigation & Maps ────────────────────────────────────────────────
+  'gps navigation', 'offline maps', 'route planner', 'compass app', 'maps navigation',
+  'hiking maps', 'trail maps', 'topo maps', 'satellite maps', 'street view',
+  'indoor navigation', 'mall map', 'airport map', 'hospital map', 'campus map',
+  'live tracking', 'location sharing', 'family locator', 'friend locator', 'employee tracker',
+  'asset tracker', 'vehicle tracker', 'fleet tracker', 'delivery tracker', 'parcel tracker',
+  'geocaching', 'treasure hunt', 'ar navigation', 'turn by turn', 'voice navigation',
+  'marine navigation', 'boat gps', 'fishing spots', 'anchor alarm', 'tide app',
+  'aviation maps', 'pilot app', 'airspace', 'notam', 'weather aviation',
+  'surveying app', 'land survey', 'area calculator', 'distance calculator', 'elevation',
+  'what3words', 'plus codes', 'coordinate converter', 'latitude longitude', 'grid reference',
+
+  // ── Vehicle & Automotive ─────────────────────────────────────────────
+  'car maintenance', 'ev charging', 'obd scanner', 'obd2 app', 'car diagnostic',
+  'engine check', 'fault codes', 'dtc codes', 'car health', 'vehicle report',
+  'car history', 'vin decoder', 'number plate', 'vehicle lookup', 'registration check',
+  'fuel economy', 'mpg tracker', 'fuel consumption', 'mileage tracker', 'logbook',
+  'car insurance', 'motor insurance', 'insurance compare', 'ncb tracker', 'policy renewal',
+  'car rental', 'self drive', 'vehicle hire', 'lease calculator', 'emi car',
+  'electric vehicle', 'ev range', 'ev battery', 'charging station', 'ev planner',
+  'motorcycle app', 'bike maintenance', 'bikers community', 'ride log', 'moto tracker',
+  'truck app', 'lorry tracker', 'hgv app', 'driver log', 'tachograph',
+  'car audio', 'equalizer car', 'subwoofer app', 'car remote', 'car alarm',
+  'reverse camera', 'parking sensor', 'blind spot', 'lane assist', 'cruise control',
+
+  // ── Security & Surveillance ───────────────────────────────────────────
+  'cctv viewer', 'ip camera', 'security camera', 'home security', 'baby monitor',
+  'nanny cam', 'pet camera', 'doorbell camera', 'smart lock', 'access control',
+  'motion detector', 'intruder alert', 'burglar alarm', 'fire alarm', 'smoke detector',
+  'flood sensor', 'gas detector', 'co detector', 'temperature monitor', 'humidity monitor',
+  'spy detector', 'hidden camera detector', 'rf detector', 'bug detector', 'eavesdrop',
+  'anti theft', 'phone tracker', 'find my phone', 'phone lock', 'remote wipe',
+  'cyber security', 'hack detector', 'firewall app', 'intrusion detection', 'network security',
+  'vpn app', 'proxy app', 'tor browser', 'dark web', 'anonymous browser',
+  'encrypted chat', 'secure messenger', 'end to end encryption', 'private chat', 'disappearing messages',
+  'two factor auth', '2fa app', 'authenticator app', 'otp generator', 'password vault',
+
+  // ── Smart Home & IoT ─────────────────────────────────────────────────
+  'smart home', 'home automation', 'iot app', 'alexa app', 'google home',
+  'smart bulb', 'smart light', 'philips hue', 'smart switch', 'smart plug',
+  'smart thermostat', 'ac control', 'hvac app', 'temperature control', 'smart fan',
+  'smart tv remote', 'universal remote', 'ir blaster', 'tv controller', 'set top box',
+  'smart speaker', 'speaker control', 'multi room audio', 'sonos app', 'bose app',
+  'smart fridge', 'smart washer', 'smart oven', 'kitchen iot', 'appliance control',
+  'smart garden', 'irrigation control', 'plant watering', 'soil sensor', 'greenhouse',
+  'energy monitor', 'electricity tracker', 'solar panel', 'power consumption', 'smart meter',
+  'water meter', 'gas meter', 'utility tracker', 'bill predictor', 'energy saver',
+  'zigbee', 'z-wave', 'mqtt', 'home assistant', 'tuya app',
+
+  // ── Emergency & Safety ───────────────────────────────────────────────
+  'emergency sos', 'sos app', 'panic button', 'safety app', 'personal safety',
+  'women safety', 'child safety', 'elder safety', 'lone worker', 'night safety',
+  'fake call', 'escape call', 'safe walk', 'safe route', 'crime map',
+  'earthquake app', 'tsunami alert', 'flood warning', 'cyclone tracker', 'disaster alert',
+  'amber alert', 'missing person', 'find missing', 'child abduction', 'kidnap alert',
+  'first aid guide', 'cpr guide', 'choking guide', 'burn treatment', 'snake bite',
+  'poison control', 'drug interaction', 'allergy emergency', 'epipen guide', 'anaphylaxis',
+  'fire escape', 'evacuation plan', 'shelter finder', 'bunker map', 'survival guide',
+  'offline survival', 'wilderness survival', 'bushcraft', 'prepper app', 'emergency kit',
+
+  // ── Weather & Environment ────────────────────────────────────────────
+  'weather forecast', 'rain alert', 'storm tracker', 'weather radar', 'lightning tracker',
+  'hurricane tracker', 'tornado alert', 'blizzard warning', 'frost alert', 'heatwave',
+  'air quality', 'aqi monitor', 'pollution tracker', 'uv index', 'pollen tracker',
+  'tide app', 'wave forecast', 'wind speed', 'barometer', 'pressure tracker',
+  'astronomy app', 'star map', 'planet finder', 'moon phase', 'solar eclipse',
+  'sunrise sunset', 'golden hour', 'blue hour', 'weather photography', 'cloud identifier',
+  'weather station', 'personal weather', 'microclimate', 'weather history', 'climate data',
+
+  // ── Nature & Outdoors ────────────────────────────────────────────────
+  'bird watching', 'bird identifier', 'plant identifier', 'flower identifier', 'tree identifier',
+  'mushroom identifier', 'insect identifier', 'animal identifier', 'fish identifier', 'snake identifier',
+  'nature sounds', 'wildlife app', 'national park', 'nature trail', 'forest app',
+  'hunting app', 'fishing app', 'fly fishing', 'hunting season', 'game tracker',
+  'camping app', 'campsite finder', 'tent guide', 'survival skills', 'foraging app',
+  'rock identifier', 'mineral app', 'gem finder', 'fossil guide', 'geology app',
+  'sky map', 'constellation', 'meteor shower', 'iss tracker', 'satellite tracker',
+
+  // ── Sports & Recreation ───────────────────────────────────────────────
+  'sports tracker', 'activity tracker', 'workout log', 'training plan', 'coach app',
+  'golf gps', 'golf scorecard', 'golf handicap', 'course finder', 'golf stats',
+  'tennis score', 'badminton score', 'squash app', 'table tennis', 'pickleball',
+  'cricket score', 'cricket live', 'fantasy cricket', 'dream11 clone', 'cricket stats',
+  'football score', 'fantasy football', 'fpl app', 'football stats', 'match predictor',
+  'basketball score', 'nba app', 'fantasy basketball', 'boxing app', 'mma tracker',
+  'cycling route', 'strava clone', 'cycling computer', 'bike fitting', 'power meter',
+  'swimming log', 'swim tracker', 'pool finder', 'swim coach', 'triathlon',
+  'marathon training', 'race tracker', 'running pace', 'vo2 max', 'heart rate zone',
+  'skiing app', 'snowboard app', 'slope finder', 'ski resort', 'avalanche',
+  'skateboard app', 'surf app', 'wave finder', 'surf forecast', 'kitesurfing',
+  'climbing app', 'bouldering', 'wall climbing', 'route setter', 'climbing grade',
+  'archery app', 'shooting range', 'target practice', 'gun app', 'ammo tracker',
+  'esports app', 'gaming tournament', 'bracket maker', 'leaderboard', 'rank tracker',
+
+  // ── Music & Audio ────────────────────────────────────────────────────
+  'music player', 'equalizer', 'bass booster', 'sound effects', 'audio enhancer',
+  'guitar tuner', 'instrument tuner', 'metronome', 'chord finder', 'tab viewer',
+  'beat maker', 'drum machine', 'music production', 'daw mobile', 'loop maker',
+  'mixing app', 'dj app', 'scratching app', 'crossfader', 'bpm detector',
+  'sheet music', 'music notation', 'score reader', 'sight reading', 'ear training',
+  'vocal trainer', 'pitch corrector', 'autotune', 'voice changer', 'voice effects',
+  'karaoke app', 'lyrics app', 'sing along', 'vocal remover', 'instrumental maker',
+  'noise cancellation', 'hearing aid', 'tinnitus relief', 'sound therapy', 'binaural beats',
+  'podcast creator', 'podcast host', 'rss podcast', 'audio editor', 'waveform editor',
+  'radio streaming', 'internet radio', 'fm radio', 'am radio', 'scanner radio',
+
+  // ── Photography (Extended) ───────────────────────────────────────────
+  'raw camera', 'manual camera', 'dslr control', 'tethered shooting', 'intervalometer',
+  'astro photography', 'macro photography', 'underwater camera', 'action camera', 'gopro app',
+  'photogrammetry', '3d scan', 'lidar scan', 'ar measurement', 'room scanner',
+  'photo metadata', 'exif viewer', 'geotagging', 'photo map', 'location photo',
+  'photo culling', 'photo organizer', 'duplicate finder', 'photo archive', 'photo migration',
+  'lightroom mobile', 'photoshop mobile', 'snapseed clone', 'vsco clone', 'afterlight',
+  'drone app', 'drone controller', 'fpv drone', 'drone footage', 'aerial photo',
+
+  // ── Communication (Extended) ─────────────────────────────────────────
+  'walkie talkie', 'push to talk', 'two way radio', 'ham radio', 'cb radio',
+  'satellite communicator', 'mesh network', 'offline chat', 'bluetooth chat', 'p2p chat',
+  'email tracker', 'read receipt', 'email scheduler', 'bulk email', 'email signature',
+  'fax app', 'efax', 'send fax', 'receive fax', 'fax to email',
+  'virtual number', 'second phone number', 'burner number', 'sms online', 'receive sms',
+  'video conference', 'webinar app', 'screen share', 'whiteboard video', 'virtual background',
+  'live caption', 'subtitles live', 'interpreter', 'sign language video', 'accessibility chat',
+
+  // ── Shopping & Commerce ───────────────────────────────────────────────
+  'shopping deals', 'price compare', 'cashback', 'resale', 'coupon',
+  'grocery delivery', 'fashion shopping', 'marketplace', 'auction', 'parcel tracker',
+  'barcode scanner shop', 'product scanner', 'price scanner', 'amazon scanner', 'review checker',
+  'secondhand shop', 'thrift store', 'preloved', 'vintage shop', 'swap app',
+  'group buying', 'flash sale', 'daily deals', 'clearance sale', 'liquidation',
+  'pre order app', 'crowdfunding', 'kickstarter clone', 'indiegogo clone', 'product launch',
+  'subscription box', 'beauty box', 'snack box', 'book box', 'toy subscription',
+  'rent app', 'borrow app', 'peer rental', 'equipment rental', 'tool rental',
+  'ticket booking', 'event ticket', 'concert ticket', 'movie ticket', 'sports ticket',
+  'gift card', 'voucher app', 'e-gift', 'gift registry', 'wish list',
+
+  // ── Kids & Parenting ─────────────────────────────────────────────────
+  'kids app', 'toddler app', 'baby app', 'child learning', 'kids games',
+  'parental control', 'screen time kids', 'kids browser', 'safe youtube', 'kids youtube',
+  'bedtime stories', 'kids audiobook', 'nursery rhymes', 'lullaby app', 'sleep stories',
+  'kids drawing', 'kids coloring', 'kids paint', 'kids creativity', 'kids art',
+  'kids math', 'kids alphabet', 'kids spelling', 'phonics app', 'reading app kids',
+  'baby monitor', 'baby sleep', 'baby feeding', 'diaper tracker', 'growth tracker',
+  'pregnancy app', 'contraction timer', 'kick counter', 'prenatal yoga', 'birth plan',
+  'family organizer', 'family calendar', 'chore chart', 'allowance tracker', 'kids reward',
+  'co parenting', 'custody schedule', 'family locator', 'kids gps', 'school bus tracker',
+
+  // ── Religion & Spirituality ───────────────────────────────────────────
+  'quran app', 'prayer times', 'qibla direction', 'islamic app', 'namaz app',
+  'hadith app', 'dua app', 'hijri calendar', 'ramadan app', 'zakat calculator',
+  'asma ul husna', 'darood', 'wazifa', 'tasbih counter', 'dhikr app',
+  'bible app', 'daily verse', 'devotional app', 'church app', 'christian app',
+  'bhagavad gita', 'hindu app', 'temple app', 'aarti app', 'puja app',
+  'buddhist app', 'meditation buddhist', 'dharma', 'sikh app', 'gurbani',
+  'jewish app', 'torah', 'shabbat', 'jewish calendar', 'synagogue',
+  'spiritual app', 'chakra', 'tarot', 'astrology', 'numerology',
+  'horoscope', 'birth chart', 'kundli', 'vastu', 'feng shui',
+
+  // ── Finance (Extended) ───────────────────────────────────────────────
+  'stock screener', 'technical analysis', 'chart patterns', 'candlestick', 'trading signals',
+  'copy trading', 'social trading', 'paper trading', 'demo trading', 'backtesting',
+  'options calculator', 'greeks calculator', 'iv rank', 'options chain', 'put call',
+  'real estate invest', 'rental yield', 'cap rate', 'property valuation', 'mortgage',
+  'gold investment', 'silver price', 'precious metals', 'commodity futures', 'cfd trading',
+  'peer lending', 'crowdlending', 'invoice finance', 'revenue based', 'angel invest',
+  'credit score', 'credit report', 'credit builder', 'cibil score', 'equifax',
+  'emi calculator', 'loan compare', 'interest calculator', 'compound interest', 'rule of 72',
+
+  // ── Health (Extended) ────────────────────────────────────────────────
+  'telehealth', 'online doctor', 'video consultation', 'prescription app', 'medicine delivery',
+  'lab test booking', 'health checkup', 'diagnostic center', 'radiology report', 'pathology',
+  'blood bank', 'organ donor', 'plasma donor', 'eye bank', 'medical id',
+  'wheelchair app', 'disability app', 'accessibility app', 'screen reader', 'hearing loop',
+  'diabetes app', 'glucose tracker', 'insulin tracker', 'cgm app', 'hba1c',
+  'cancer tracker', 'chemotherapy log', 'radiation schedule', 'palliative care', 'hospice',
+  'addiction recovery', 'sobriety tracker', 'aa meeting finder', 'rehab finder', 'drug test',
+  'quit smoking', 'nicotine tracker', 'vaping quit', 'alcohol tracker', 'sober app',
+
+  // ── Education (Extended) ────────────────────────────────────────────
+  'math calculator', 'equation solver', 'algebra app', 'calculus app', 'statistics app',
+  'geometry app', 'trigonometry', 'graph plotter', 'desmos clone', 'wolfram clone',
+  'periodic table', 'chemistry solver', 'molecular viewer', 'physics simulator', 'circuit simulator',
+  'anatomy app', 'body atlas', '3d anatomy', 'medical study', 'nursing app',
+  'law app', 'legal study', 'case law', 'constitution app', 'legal dictionary',
+  'stock market learn', 'investing basics', 'crypto learn', 'defi learn', 'nft learn',
+  'public speaking', 'debate practice', 'presentation skills', 'storytelling', 'writing skills',
+  'speed math', 'abacus app', 'mental math', 'vedic math', 'math tricks',
+
+  // ── Productivity (Extended) ──────────────────────────────────────────
+  'meeting scheduler', 'calendar booking', 'appointment app', 'slot booking', 'availability',
+  'email newsletter', 'drip campaign', 'marketing automation', 'social media scheduler', 'post planner',
+  'link shortener', 'bio link', 'qr generator', 'barcode generator', 'vcard maker',
+  'invoice generator', 'quote maker', 'proposal builder', 'contract template', 'nda generator',
+  'signature capture', 'e-sign', 'document sign', 'form builder', 'survey creator',
+  'team management', 'resource planner', 'capacity planner', 'gantt chart', 'milestone tracker',
+  'client portal', 'customer portal', 'vendor portal', 'supplier app', 'procurement',
+  'translation workflow', 'localization', 'content management', 'cms app', 'headless cms',
+
+  // ── Gaming Utilities ─────────────────────────────────────────────────
+  'game booster', 'gaming mode', 'fps booster', 'lag fix', 'ping reducer',
+  'game recording', 'gameplay capture', 'streaming overlay', 'obs mobile', 'stream deck',
+  'controller mapper', 'keymapper', 'gamepad app', 'joystick app', 'trigger app',
+  'game wallet', 'gift card gaming', 'game topup', 'uc purchase', 'robux app',
+  'game finder', 'new games', 'game discovery', 'indie games', 'free games',
+  'cheat engine mobile', 'save editor', 'mod menu', 'hack tool game', 'game trainer',
+  'gaming vpn', 'gaming dns', 'gaming proxy', 'server selector', 'region changer',
+
+  // ── Miscellaneous & Niche ─────────────────────────────────────────────
+  'metal detector', 'treasure detector', 'gold detector', 'mine detector', 'stud finder',
+  'emf detector', 'ghost detector', 'paranormal app', 'evp recorder', 'spirit box',
+  'lie detector', 'polygraph app', 'truth or dare', 'hypnosis app', 'subliminal',
+  'dice roller', 'random generator', 'lottery picker', 'lucky numbers', 'coin flip',
+  'stopwatch lap', 'interval timer', 'tabata timer', 'boxing round timer', 'chess clock',
+  'tally counter', 'clicker counter', 'people counter', 'inventory counter', 'score keeper',
+  'translator camera', 'document translate', 'website translate', 'menu translate', 'sign translate',
+  'font identifier', 'color picker', 'hex color', 'pantone', 'color palette',
+  'sound meter', 'decibel meter', 'noise level', 'audio spectrum', 'frequency analyzer',
+  'mirror app', 'magnifier', 'loupe', 'zoom camera', 'telephoto',
+  'weather station diy', 'raspberry pi', 'arduino app', 'esp32', 'gpio controller',
+  'ham radio log', 'frequency scanner', 'signal strength', 'rf analyzer', 'spectrum analyzer',
+  'morse code', 'cipher decoder', 'encryption app', 'steganography', 'secret message',
+  'vintage camera', 'film simulation', 'lomography', 'pinhole', 'toy camera',
+  'face recognition', 'face unlock', 'facial analysis', 'age estimator', 'emotion detector',
+  'object recognition', 'image search', 'reverse image', 'visual search', 'product recognition',
+  'receipt scanner', 'expense ocr', 'bill scanner', 'menu scanner', 'label scanner',
+  'handwriting recognition', 'handwriting to text', 'math ocr', 'formula scanner', 'table ocr',
+  'nfc reader', 'nfc writer', 'rfid scanner', 'smart tag', 'bluetooth beacon',
+  'wifi password', 'wifi sharing', 'hotspot manager', 'data usage', 'bandwidth monitor',
+  'sleep apnea', 'snoring app', 'cpap tracker', 'sleep analysis', 'sleep lab',
+  'lucid dreaming', 'dream journal', 'dream analysis', 'sleep cycle', 'smart alarm',
+  'hypnotherapy', 'nlp app', 'self improvement', 'confidence building', 'social anxiety',
+  'couple app', 'relationship tracker', 'anniversary reminder', 'love language', 'couples games',
+  'memory book', 'life story', 'biography app', 'timeline life', 'legacy app',
+  'genealogy', 'family tree', 'ancestry', 'dna app', 'heritage app',
+  'coin collection', 'stamp collection', 'card collection', 'toy collection', 'book collection',
+  'wine collection', 'whiskey tracker', 'beer log', 'spirits guide', 'cellar app',
+  'cigar app', 'tobacco pipe', 'hookah guide', 'vaping app', 'mod app',
+  'tattoo design', 'tattoo finder', 'piercing guide', 'body art', 'henna design',
+  'astro photography', 'telescope app', 'planet viewer', 'galaxy explorer', 'space news',
+  'climate change', 'carbon footprint', 'eco app', 'sustainability', 'recycling guide',
+  'volunteer app', 'charity app', 'crowdfunding donate', 'blood donation', 'food donation',
+  'legal aid', 'lawyer finder', 'court dates', 'bail tracker', 'legal document',
+  'notary app', 'apostille', 'document legalization', 'affidavit', 'sworn statement',
+  'voting app', 'election tracker', 'political news', 'government services', 'citizen app',
+  'passport app', 'visa tracker', 'immigration', 'work permit', 'residency app',
+  'military app', 'veteran app', 'defence news', 'army fitness', 'tactical app',
+  'police app', 'crime report', 'neighborhood watch', 'community safety', 'tip line',
+  'firefighter app', 'incident command', 'hazmat guide', 'rescue app', 'sar app',
+])];
+
+const TRENDING_CATEGORIES = Object.keys(gplay.category);
+
+const TRENDING_COUNTRIES = [
+  'us', 'gb', 'ca', 'au', 'nz', 'ie',
+  'pk', 'af', 'cn', 'in', 'bd', 'lk', 'np', 'bt', 'mv',
+  'id', 'my', 'ph', 'sg', 'th', 'vn', 'kh', 'la', 'mm',
+  'jp', 'kr', 'tw', 'hk', 'mo',
+  'de', 'fr', 'it', 'es', 'pt', 'nl', 'be', 'ch', 'at', 'se', 'no', 'dk', 'fi',
+  'is', 'pl', 'cz', 'sk', 'ro', 'hu', 'gr', 'tr', 'ua', 'bg', 'hr', 'si',
+  'rs', 'ba', 'mk', 'al', 'ee', 'lv', 'lt',
+  'br', 'mx', 'ar', 'cl', 'co', 'pe', 'uy', 'py', 'bo', 'ec', 've',
+  'cr', 'pa', 'gt', 'sv', 'hn', 'ni', 'do',
+  'za', 'ng', 'ke', 'eg', 'ma', 'dz', 'tn', 'gh', 'tz', 'ug', 'et',
+  'sa', 'ae', 'qa', 'kw', 'bh', 'om', 'il', 'jo', 'lb', 'iq',
+  'ru', 'kz', 'uz', 'az', 'ge', 'am',
+];
+
+const TRENDING_CACHE_TTL_MS = 15 * 60 * 1000;
+const trendingCache = new Map();
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function pickUseful(raw) {
@@ -294,6 +598,140 @@ async function searchCandidates(opts, { allowFallback = true, detailFallback = f
     : candidates;
 }
 
+/**
+ * Waits for the requested number of milliseconds.
+ * @param {number} ms Milliseconds to pause.
+ * @returns {Promise<void>}
+ */
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Converts trending discovery query params into bounded runtime options.
+ * @param {object} query Express query object.
+ * @returns {{daysBack:number,minRating:number,minInstalls:number,maxResults:number,country:string,lang:string}}
+ */
+function normalizeTrendingParams(query) {
+  const parseBoundedInt = (value, fallback, min, max) => {
+    const parsed = parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(Math.max(parsed, min), max);
+  };
+  const parseBoundedFloat = (value, fallback, min, max) => {
+    const parsed = parseFloat(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(Math.max(parsed, min), max);
+  };
+
+  return {
+    daysBack: parseBoundedInt(query.daysBack, 30, 0, 365),
+    minRating: parseBoundedFloat(query.minRating, 0, 0, 5),
+    minInstalls: parseBoundedInt(query.minInstalls, 0, 0, Number.MAX_SAFE_INTEGER),
+    maxResults: parseBoundedInt(query.maxResults, 5, 1, 20),
+    country: String(query.country || '').trim().toLowerCase(),
+    lang: String(query.lang || 'en').trim().toLowerCase() || 'en',
+  };
+}
+
+/**
+ * Resolves the country scope for a trending scan.
+ * @param {string} country Country code, worldwide, or all.
+ * @returns {string[]} Country codes to scan.
+ */
+function countriesForTrending(country) {
+  if (['worldwide', 'all', 'global'].includes(country)) return TRENDING_COUNTRIES;
+  return country ? [country] : [''];
+}
+
+/**
+ * Adds a country option only when a country filter is active.
+ * @param {string} country Country code or empty string.
+ * @returns {{country?:string}}
+ */
+function countryOption(country) {
+  return country ? { country } : {};
+}
+
+/**
+ * Creates a stable cache key for trending discovery params.
+ * @param {ReturnType<typeof normalizeTrendingParams>} params Normalized discovery params.
+ * @returns {string}
+ */
+function cacheKeyForTrending(params) {
+  return JSON.stringify(params);
+}
+
+/**
+ * Runs async work in bounded batches and waits between batches.
+ * @template T,U
+ * @param {T[]} items Items to process.
+ * @param {number} limit Max parallel work per batch.
+ * @param {(item:T,index:number)=>Promise<U>} mapper Async mapper.
+ * @param {number} batchDelayMs Delay between batches.
+ * @returns {Promise<PromiseSettledResult<U>[]>}
+ */
+async function runLimitedBatches(items, limit, mapper, batchDelayMs) {
+  const settled = [];
+
+  for (let start = 0; start < items.length; start += limit) {
+    const batch = items.slice(start, start + limit);
+    const batchResults = await Promise.allSettled(
+      batch.map((item, offset) => mapper(item, start + offset))
+    );
+    settled.push(...batchResults);
+
+    if (start + limit < items.length && batchDelayMs > 0) {
+      await delay(batchDelayMs);
+    }
+  }
+
+  return settled;
+}
+
+/**
+ * Calculates a simple trend score using installs and app rating.
+ * @param {object} app App object from google-play-scraper.
+ * @returns {number}
+ */
+function scoreForTrending(app) {
+  return (app.minInstalls || app.maxInstalls || 0) * (app.score || 0);
+}
+
+/**
+ * Checks if an app was released within the requested recency window.
+ * @param {object} app App object with a released field.
+ * @param {number} daysBack Recency window in days; 0 disables the filter.
+ * @returns {boolean}
+ */
+function isReleasedWithinDays(app, daysBack) {
+  if (!daysBack || daysBack <= 0) return true;
+
+  const released = app.released ? new Date(app.released) : null;
+  if (!released || isNaN(released.getTime())) return false;
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysBack);
+  return released >= cutoff;
+}
+
+/**
+ * Returns an unexpired cache entry and drops stale entries.
+ * @param {string} key Cache key.
+ * @returns {{cachedAt:number,response:object}|null}
+ */
+function getTrendingCacheEntry(key) {
+  const entry = trendingCache.get(key);
+  if (!entry) return null;
+
+  if (Date.now() - entry.cachedAt >= TRENDING_CACHE_TTL_MS) {
+    trendingCache.delete(key);
+    return null;
+  }
+
+  return entry;
+}
+
 // ─── routes ─────────────────────────────────────────────────────────────────
 
 // Search apps — keyword is now OPTIONAL.
@@ -515,6 +953,142 @@ app.get('/api/suggest', async (req, res) => {
   } catch (err) {
     console.error('Suggest error:', err.message);
     res.status(500).json({ error: err.message || 'Could not fetch suggestions' });
+  }
+});
+
+// Trending discovery sources
+app.get('/api/trending-categories', (_req, res) => {
+  res.json({
+    categories: TRENDING_CATEGORIES,
+    keywords: TRENDING_KEYWORDS,
+    countries: TRENDING_COUNTRIES,
+  });
+});
+
+// Trending discovery cache status
+app.get('/api/trending-cache-status', (req, res) => {
+  const params = normalizeTrendingParams(req.query);
+  const key = cacheKeyForTrending(params);
+  const entry = getTrendingCacheEntry(key);
+
+  if (!entry) {
+    return res.json({ cachedAt: null, totalApps: 0, expiresIn: 0 });
+  }
+
+  const expiresIn = Math.max(0, TRENDING_CACHE_TTL_MS - (Date.now() - entry.cachedAt));
+  res.json({
+    cachedAt: new Date(entry.cachedAt).toISOString(),
+    totalApps: entry.response.total || 0,
+    expiresIn,
+  });
+});
+
+// Auto-discover trending and recently released apps across categories + keywords
+app.get('/api/trending-discovery', async (req, res) => {
+  try {
+    const params = normalizeTrendingParams(req.query);
+    const key = cacheKeyForTrending(params);
+    const cached = getTrendingCacheEntry(key);
+
+    if (cached) {
+      return res.json(cached.response);
+    }
+
+    const { daysBack, minRating, minInstalls, maxResults, country, lang } = params;
+    const countries = countriesForTrending(country);
+    const sourceTasks = [
+      ...countries.flatMap(sourceCountry => TRENDING_CATEGORIES.map(category => ({
+        type: 'category',
+        source: category,
+        country: sourceCountry,
+        run: () => gplay.list({
+          category: categoryValue(category),
+          collection: gplay.collection.TOP_FREE,
+          num: maxResults,
+          lang,
+          ...countryOption(sourceCountry),
+        }).then(items => items.map(item => ({ ...item, _sourceCountry: sourceCountry }))),
+      }))),
+      ...countries.flatMap(sourceCountry => TRENDING_KEYWORDS.map(keyword => ({
+        type: 'keyword',
+        source: keyword,
+        country: sourceCountry,
+        run: () => gplay.search({
+          term: keyword,
+          num: maxResults,
+          sort: gplay.sort.NEWEST,
+          lang,
+          ...countryOption(sourceCountry),
+        }).then(items => items.map(item => ({ ...item, _sourceCountry: sourceCountry }))),
+      }))),
+    ];
+
+    const settled = await runLimitedBatches(sourceTasks, 6, task => task.run(), 300);
+    const candidateBatches = [];
+
+    settled.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        candidateBatches.push(Array.isArray(result.value) ? result.value : []);
+        return;
+      }
+
+      const task = sourceTasks[index];
+      console.error(
+        `Trending ${task.type} failed (${task.source}, ${task.country || 'default country'}):`,
+        result.reason?.message || result.reason
+      );
+    });
+
+    const candidates = uniqueByAppId(candidateBatches);
+    const detailed = await mapLimit(candidates, 4, async (candidate) => {
+      try {
+        return await gplay.app({
+          appId: candidate.appId,
+          lang,
+          ...countryOption(candidate._sourceCountry || countries[0]),
+        });
+      } catch {
+        return candidate;
+      }
+    });
+
+    let apps = detailed
+      .map(pickUseful)
+      .filter(Boolean)
+      .filter(app => isReleasedWithinDays(app, daysBack))
+      .filter(app => (app.score || 0) >= minRating)
+      .filter(app => (app.minInstalls || app.maxInstalls || 0) >= minInstalls);
+
+    apps = apps.sort((a, b) => {
+      const scoreDiff = scoreForTrending(b) - scoreForTrending(a);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      const bDate = b.released ? new Date(b.released).getTime() : 0;
+      const aDate = a.released ? new Date(a.released).getTime() : 0;
+      return bDate - aDate;
+    });
+
+    const response = {
+      total: apps.length,
+      sources: {
+        categories: TRENDING_CATEGORIES.length,
+        keywords: TRENDING_KEYWORDS.length,
+        countries: countries.length,
+        countryScope: country || 'default',
+        scans: sourceTasks.length,
+      },
+      apps,
+    };
+
+    trendingCache.set(key, {
+      cachedAt: Date.now(),
+      response,
+    });
+
+    res.json(response);
+  } catch (err) {
+    console.error('Trending discovery error:', err.message);
+    res.status(500).json({ error: err.message || 'Trending discovery failed' });
   }
 });
 

@@ -1,7 +1,7 @@
 const API = '';
 
-async function fetchJson(url) {
-  const res = await fetch(url, { cache: 'no-store' });
+async function fetchJson(url, options = {}) {
+  const res = await fetch(url, { cache: 'no-store', ...options });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
 
@@ -31,6 +31,7 @@ function fmtDate(val) {
 /* ── Badges ─────────────────────────────────────────── */
 function makeBadges(app) {
   const b = [];
+  if (app._isNew)       b.push(`<span class="badge badge-new">NEW</span>`);
   if (app.free != null) b.push(app.free ? `<span class="badge badge-green">Free</span>` : `<span class="badge badge-yellow">Paid ${app.priceText||''}</span>`);
   if (app.editorsChoice) b.push(`<span class="badge badge-blue">Editor's choice</span>`);
   if (app.offersIAP)     b.push(`<span class="badge badge-orange">IAP</span>`);
@@ -195,6 +196,237 @@ async function runSearch() {
   btn.disabled = false;
 }
 
+/* ── Trending discovery ────────────────────────────── */
+const trendingState = {
+  apps: [],
+  previousIds: new Set(),
+  autoTimer: null,
+  logTimer: null,
+  progressTimer: null,
+  sourceCounts: { categories: 0, keywords: 0, countries: 0 },
+};
+
+function installsForSort(app) {
+  return app.minInstalls || app.maxInstalls || 0;
+}
+
+function dateForSort(app) {
+  const d = app.released ? new Date(app.released) : null;
+  return d && !isNaN(d.getTime()) ? d.getTime() : 0;
+}
+
+function sortTrendingApps(apps, mode) {
+  return [...apps].sort((a, b) => {
+    if (mode === 'rating') return (b.score || 0) - (a.score || 0) || dateForSort(b) - dateForSort(a);
+    if (mode === 'installs') return installsForSort(b) - installsForSort(a) || dateForSort(b) - dateForSort(a);
+    return dateForSort(b) - dateForSort(a) || (b.score || 0) - (a.score || 0);
+  });
+}
+
+function setTrendingStatus(message, active=false) {
+  const status = document.getElementById('trendingStatus');
+  status.classList.toggle('active', active);
+  status.querySelector('span').textContent = message;
+}
+
+function setTrendingProgress(percent) {
+  const bar = document.querySelector('#trendingStatus .progress-bar');
+  if (!bar) return;
+  const value = Math.max(0, Math.min(100, Math.round(percent)));
+  bar.style.width = `${value}%`;
+  bar.setAttribute('aria-valuenow', String(value));
+}
+
+function selectedTrendingScope(counts) {
+  const value = document.getElementById('trendingCountry').value;
+  const selected = document.getElementById('trendingCountry').selectedOptions[0]?.textContent || 'No country filter';
+  const countryCount = value === 'worldwide' ? counts.countries : 1;
+  return {
+    countryCount,
+    label: value === 'worldwide' ? `Worldwide (${counts.countries} countries)` : selected,
+    scans: countryCount * (counts.categories + counts.keywords),
+  };
+}
+
+function appendTrendingLog(message) {
+  const log = document.getElementById('trendingLog');
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  log.insertAdjacentHTML('beforeend', `<div class="log-line"><span>${time}</span>${message}</div>`);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearTrendingLog() {
+  document.getElementById('trendingLog').innerHTML = '';
+}
+
+function stopTrendingLogTicker() {
+  if (trendingState.logTimer) {
+    clearInterval(trendingState.logTimer);
+    trendingState.logTimer = null;
+  }
+  if (trendingState.progressTimer) {
+    clearInterval(trendingState.progressTimer);
+    trendingState.progressTimer = null;
+  }
+}
+
+function startTrendingLogTicker(counts) {
+  stopTrendingLogTicker();
+  clearTrendingLog();
+  setTrendingProgress(0);
+
+  const scope = selectedTrendingScope(counts);
+  const perSource = document.getElementById('trendingMaxResults').value || '5';
+  const days = document.getElementById('trendingDaysBack').value || '30';
+  const minRating = document.getElementById('trendingMinRating').value || '0';
+  const minInstalls = document.getElementById('trendingMinInstalls').value || '0';
+  const phases = [
+    { pct: 5, msg: `Preparing ${scope.label} discovery run.` },
+    { pct: 12, msg: `Sources selected: ${counts.categories} categories + ${counts.keywords} keywords.` },
+    { pct: 20, msg: `Queue size: ${scope.scans.toLocaleString()} searches, up to ${perSource} results from each source.` },
+    { pct: 34, msg: 'Searching category charts for currently visible apps.' },
+    { pct: 48, msg: 'Searching keyword results sorted by newest apps.' },
+    { pct: 60, msg: 'Ignoring failed sources and keeping successful batches.' },
+    { pct: 70, msg: 'Removing duplicate package IDs found from multiple sources.' },
+    { pct: 82, msg: 'Fetching full app pages to read release dates and install ranges.' },
+    { pct: 90, msg: `Applying filters: released within ${days} days, rating ${minRating}+, installs ${minInstalls}+. ` },
+    { pct: 94, msg: 'Sorting by trend score and newest release date, then updating cache.' },
+  ];
+  let index = 0;
+  let elapsed = 0;
+
+  const nextPhase = () => {
+    const phase = phases[Math.min(index, phases.length - 1)];
+    setTrendingProgress(phase.pct);
+    appendTrendingLog(phase.msg);
+    index++;
+  };
+
+  nextPhase();
+  trendingState.logTimer = setInterval(() => {
+    if (index < phases.length) nextPhase();
+  }, 1800);
+  trendingState.progressTimer = setInterval(() => {
+    elapsed += 5;
+    if (index >= phases.length) {
+      appendTrendingLog(`Still working... Google Play detail pages can be slow. Elapsed: ${elapsed}s.`);
+    }
+  }, 5000);
+}
+
+async function loadTrendingSources() {
+  if (trendingState.sourceCounts.categories && trendingState.sourceCounts.keywords && trendingState.sourceCounts.countries) {
+    return trendingState.sourceCounts;
+  }
+
+  const data = await fetchJson(`${API}/api/trending-categories`);
+  trendingState.sourceCounts = {
+    categories: Array.isArray(data.categories) ? data.categories.length : 0,
+    keywords: Array.isArray(data.keywords) ? data.keywords.length : 0,
+    countries: Array.isArray(data.countries) ? data.countries.length : 0,
+  };
+  return trendingState.sourceCounts;
+}
+
+function renderTrendingGrid() {
+  const out = document.getElementById('trendingResults');
+  const sortMode = document.getElementById('trendingSort').value;
+  const apps = sortTrendingApps(trendingState.apps, sortMode);
+  const days = document.getElementById('trendingDaysBack').value || '30';
+
+  if (!apps.length) {
+    out.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">↯</div>
+        <p>No trending apps matched these filters.</p>
+        <p class="empty-sub">Try a wider release window, lower min rating, or lower min installs.</p>
+      </div>`;
+    return;
+  }
+
+  const meta = `Found <span>${apps.length}</span> unique apps released in the last <span>${days}</span> days`;
+  renderGrid(out, apps, false, meta);
+}
+
+function trendingParams() {
+  return new URLSearchParams({
+    daysBack: document.getElementById('trendingDaysBack').value || '30',
+    minRating: document.getElementById('trendingMinRating').value || '0',
+    minInstalls: document.getElementById('trendingMinInstalls').value || '0',
+    maxResults: document.getElementById('trendingMaxResults').value || '5',
+    country: document.getElementById('trendingCountry').value,
+    lang: document.getElementById('globalLang').value || 'en',
+  });
+}
+
+async function refreshTrendingCacheStatus() {
+  try {
+    const data = await fetchJson(`${API}/api/trending-cache-status?${trendingParams()}`);
+    if (!data.cachedAt) {
+      const counts = await loadTrendingSources();
+      const scope = selectedTrendingScope(counts);
+      setTrendingStatus(`Ready to scan ${scope.label}: ${counts.categories} categories + ${counts.keywords} keywords.`);
+      setTrendingProgress(0);
+      return;
+    }
+
+    const minutesAgo = Math.max(0, Math.round((Date.now() - new Date(data.cachedAt).getTime()) / 60000));
+    setTrendingStatus(`Last scanned ${minutesAgo} minute${minutesAgo===1?'':'s'} ago · ${data.totalApps} apps cached`);
+    setTrendingProgress(100);
+  } catch(_) {}
+}
+
+async function runTrendingDiscovery({ auto = false } = {}) {
+  const btn = document.getElementById('trendingBtn');
+  const out = document.getElementById('trendingResults');
+  btn.disabled = true;
+
+  try {
+    const counts = await loadTrendingSources();
+    const scope = selectedTrendingScope(counts);
+    const scanMsg = `Scanning Play Store ${scope.label}: ${counts.categories} categories and ${counts.keywords} keywords...`;
+    setTrendingStatus(scanMsg, true);
+    startTrendingLogTicker(counts);
+    renderLoading(out, scanMsg);
+
+    const data = await fetchJson(`${API}/api/trending-discovery?${trendingParams()}`);
+    stopTrendingLogTicker();
+    setTrendingProgress(100);
+    const priorIds = new Set(trendingState.apps.map(app => app.appId));
+    trendingState.previousIds = priorIds;
+    trendingState.apps = (data.apps || []).map(app => ({
+      ...app,
+      _isNew: auto && priorIds.size > 0 && !priorIds.has(app.appId),
+    }));
+
+    const days = document.getElementById('trendingDaysBack').value || '30';
+    setTrendingStatus(`Found ${data.total || 0} unique apps released in the last ${days} days`);
+    appendTrendingLog(`Complete: found ${(data.total || 0).toLocaleString()} matching apps from ${(data.sources?.scans || scope.scans).toLocaleString()} source searches.`);
+    renderTrendingGrid();
+  } catch(e) {
+    stopTrendingLogTicker();
+    setTrendingProgress(0);
+    setTrendingStatus('Discovery failed. Adjust filters and try again.');
+    appendTrendingLog(`Error: ${e.message}`);
+    renderError(out, e.message);
+  }
+
+  btn.disabled = false;
+}
+
+function updateTrendingAutoRefresh() {
+  if (trendingState.autoTimer) {
+    clearInterval(trendingState.autoTimer);
+    trendingState.autoTimer = null;
+  }
+
+  const enabled = document.getElementById('trendingAutoRefresh').checked;
+  if (!enabled) return;
+
+  const minutes = Math.max(parseInt(document.getElementById('trendingRefreshMinutes').value, 10) || 60, 5);
+  trendingState.autoTimer = setInterval(() => runTrendingDiscovery({ auto: true }), minutes * 60 * 1000);
+}
+
 /* ── Quick discover ─────────────────────────────────── */
 function quickDiscover(days, category) {
   const now=new Date(), past=new Date();
@@ -299,7 +531,7 @@ function clearDates() {
 }
 
 /* ── Tabs ───────────────────────────────────────────── */
-const tabTitles={search:'Search Apps',top:'Top Charts',lookup:'App Lookup',developer:'Developer Apps'};
+const tabTitles={search:'Search Apps',trending:'Trending Discovery',top:'Top Charts',lookup:'App Lookup',developer:'Developer Apps'};
 function switchTab(name) {
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===name));
   document.querySelectorAll('.tab-panel').forEach(el=>el.classList.toggle('active',el.id==='tab-'+name));
@@ -364,6 +596,13 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('DOMContentLoaded',()=>{
   loadCategories();
+  loadTrendingSources()
+    .then(counts => {
+      const scope = selectedTrendingScope(counts);
+      setTrendingStatus(`Ready to scan ${scope.label}: ${counts.categories} categories + ${counts.keywords} keywords.`);
+    })
+    .then(refreshTrendingCacheStatus)
+    .catch(() => {});
   document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',()=>switchTab(el.dataset.tab)));
   document.getElementById('searchBtn').addEventListener('click',runSearch);
   document.getElementById('searchQuery').addEventListener('input', e => {
@@ -381,6 +620,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) closeSuggest(); });
   document.getElementById('topBtn').addEventListener('click',runTop);
+  document.getElementById('trendingBtn').addEventListener('click',()=>runTrendingDiscovery());
+  document.getElementById('trendingSort').addEventListener('change',renderTrendingGrid);
+  document.getElementById('trendingAutoRefresh').addEventListener('change',updateTrendingAutoRefresh);
+  document.getElementById('trendingRefreshMinutes').addEventListener('change',updateTrendingAutoRefresh);
+  ['trendingDaysBack','trendingMinRating','trendingMinInstalls','trendingMaxResults','trendingCountry','globalLang'].forEach(id => {
+    document.getElementById(id).addEventListener('change', refreshTrendingCacheStatus);
+  });
   document.getElementById('lookupBtn').addEventListener('click',()=>runLookup());
   document.getElementById('devBtn').addEventListener('click',()=>runDev());
   document.getElementById('menuToggle').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));

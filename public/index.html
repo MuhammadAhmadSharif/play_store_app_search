@@ -17,6 +17,7 @@
   </div>
   <nav class="sidebar-nav">
     <button class="nav-item active" data-tab="search"><span class="nav-icon">⌕</span> Search</button>
+    <button class="nav-item" data-tab="trending"><span class="nav-icon">↯</span> Trending</button>
     <button class="nav-item" data-tab="top"><span class="nav-icon">↑</span> Top Charts</button>
     <button class="nav-item" data-tab="lookup"><span class="nav-icon">◎</span> App Lookup</button>
     <button class="nav-item" data-tab="developer"><span class="nav-icon">✦</span> Developer</button>
@@ -190,6 +191,98 @@
         <div class="empty-icon">⌕</div>
         <p>Set filters and click Search — keyword is optional</p>
         <p class="empty-sub">Use release date + min installs to discover new trending apps</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRENDING DISCOVERY TAB -->
+  <section class="tab-panel" id="tab-trending">
+    <div class="filter-bar">
+      <div class="hint-bar">
+        <span class="hint-icon">↯</span>
+        Scan Play Store without a country filter by default, or choose a specific/worldwide scope for a broader discovery run.
+      </div>
+
+      <div class="filter-section-label">Discovery filters</div>
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Released within (days)</label>
+          <input type="number" id="trendingDaysBack" value="30" min="1" max="365" />
+        </div>
+        <div class="filter-group">
+          <label>Min rating</label>
+          <input type="number" id="trendingMinRating" value="3.5" min="0" max="5" step="0.1" />
+        </div>
+        <div class="filter-group">
+          <label>Min installs</label>
+          <input type="number" id="trendingMinInstalls" value="1000" min="0" step="100" />
+        </div>
+        <div class="filter-group">
+          <label>Results per source</label>
+          <input type="number" id="trendingMaxResults" value="5" min="1" max="20" />
+        </div>
+        <div class="filter-group">
+          <label>Country scope</label>
+          <select id="trendingCountry">
+            <option value="" selected>No country filter</option>
+            <option value="worldwide">Worldwide</option>
+            <option value="us">United States</option>
+            <option value="pk">Pakistan</option>
+            <option value="af">Afghanistan</option>
+            <option value="cn">China</option>
+            <option value="in">India</option>
+            <option value="gb">United Kingdom</option>
+            <option value="ca">Canada</option>
+            <option value="au">Australia</option>
+            <option value="bd">Bangladesh</option>
+            <option value="lk">Sri Lanka</option>
+            <option value="np">Nepal</option>
+            <option value="de">Germany</option>
+            <option value="fr">France</option>
+            <option value="tr">Turkey</option>
+            <option value="ae">United Arab Emirates</option>
+            <option value="sa">Saudi Arabia</option>
+            <option value="br">Brazil</option>
+            <option value="jp">Japan</option>
+            <option value="kr">South Korea</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Sort by</label>
+          <select id="trendingSort">
+            <option value="newest">Newest</option>
+            <option value="rating">Highest Rated</option>
+            <option value="installs">Most Installed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hint-bar">
+        <span class="hint-icon">i</span>
+        No country filter uses the scraper default market. Worldwide scans many countries and can take much longer.
+      </div>
+
+      <div class="trending-action-row">
+        <button class="btn-primary btn-large" id="trendingBtn">Discover Trending Apps</button>
+        <label class="auto-refresh-toggle">
+          <input type="checkbox" id="trendingAutoRefresh" />
+          <span>Auto-refresh every</span>
+          <input type="number" id="trendingRefreshMinutes" value="60" min="5" />
+          <span>minutes</span>
+        </label>
+      </div>
+
+      <div class="trending-status" id="trendingStatus">
+        <div class="progress-track"><div class="progress-bar"></div></div>
+        <span>Ready to scan without a country filter.</span>
+      </div>
+      <div class="trending-log" id="trendingLog"></div>
+    </div>
+    <div class="results-area" id="trendingResults">
+      <div class="empty-state">
+        <div class="empty-icon">↯</div>
+        <p>Run discovery to scan Play Store trends</p>
+        <p class="empty-sub">Results are deduplicated, enriched with release dates, and cached for 15 minutes.</p>
       </div>
     </div>
   </section>
