@@ -22,7 +22,7 @@ app.use('/api', (_req, res, next) => {
 app.use(express.static(path.join(__dirname, '../public')));
 
 const TRENDING_KEYWORDS = [...new Set([
-  // ── AI & Machine Learning ──────────────────────────────────────────────
+  // ── AI & Machine Learning (Core) ──────────────────────────────────────
   'ai assistant', 'ai chat', 'ai image generator', 'chatgpt', 'ai video',
   'ai photo editor', 'ai avatar', 'ai art', 'ai writing', 'ai keyboard',
   'ai voice', 'ai music', 'ai translator', 'ai tutor', 'ai coding',
@@ -37,6 +37,154 @@ const TRENDING_KEYWORDS = [...new Set([
   'voice clone', 'deepfake detector', 'ai news', 'ai finance', 'ai health',
   'ai logo', 'ai poster', 'ai thumbnail', 'ai caption', 'ai hashtag',
   'ai resume', 'ai cover letter', 'ai interview', 'ai feedback', 'ai coach',
+
+  // ── AI × Design & Visual Arts ────────────────────────────────────────
+  'ai interior design', 'ai room design', 'ai home decor', 'ai floor plan', 'ai architecture',
+  'ai exterior design', 'ai landscape design', 'ai garden design', 'ai office design', 'ai bedroom design',
+  'ai kitchen design', 'ai bathroom design', 'ai living room design', 'ai furniture placement', 'ai color scheme',
+  'ai graphic design', 'ai logo design', 'ai brand identity', 'ai business card', 'ai flyer design',
+  'ai banner design', 'ai ui design', 'ai ux design', 'ai app design', 'ai web design',
+  'ai illustration', 'ai character design', 'ai concept art', 'ai sketch', 'ai drawing',
+  'ai painting', 'ai portrait', 'ai cartoon', 'ai caricature', 'ai pixel art',
+  'ai tattoo design', 'ai nail art', 'ai henna design', 'ai mehndi', 'ai pattern design',
+  'ai wallpaper design', 'ai background design', 'ai texture', 'ai mockup', 'ai prototype',
+  'ai color palette', 'ai font pairing', 'ai typography', 'ai icon design', 'ai vector',
+
+  // ── AI × Fashion & Style ─────────────────────────────────────────────
+  'ai fashion design', 'ai outfit generator', 'ai style advisor', 'ai wardrobe', 'ai clothing design',
+  'ai virtual try on', 'ai dress design', 'ai fabric pattern', 'ai shoe design', 'ai accessory design',
+  'ai makeup look', 'ai hairstyle', 'ai hair color', 'ai beard style', 'ai skincare routine',
+  'ai body measurement', 'ai size recommender', 'ai personal stylist', 'ai lookbook', 'ai trend forecast',
+  'ai jewelry design', 'ai watch design', 'ai bag design', 'ai eyewear', 'ai hat design',
+
+  // ── AI × Photography & Video ─────────────────────────────────────────
+  'ai photo enhancer', 'ai image upscaler', 'ai noise reduction', 'ai sharpening', 'ai hdr',
+  'ai sky replacement', 'ai background remover', 'ai object eraser', 'ai image inpainting', 'ai outpainting',
+  'ai photo restoration', 'ai old photo repair', 'ai colorize photo', 'ai photo animation', 'ai photo to video',
+  'ai video enhancer', 'ai video upscaler', 'ai video stabilizer', 'ai video denoiser', 'ai video colorize',
+  'ai video summary', 'ai video highlight', 'ai video cutter', 'ai reel maker', 'ai shorts maker',
+  'ai thumbnail generator', 'ai cover photo', 'ai profile picture', 'ai headshot', 'ai product photo',
+  'ai photo background', 'ai studio photo', 'ai fashion photo', 'ai food photography ai', 'ai real estate photo',
+
+  // ── AI × Writing & Content ────────────────────────────────────────────
+  'ai content writer', 'ai blog writer', 'ai article writer', 'ai essay writer', 'ai report writer',
+  'ai copywriter', 'ai ad copy', 'ai sales copy', 'ai product description', 'ai seo writer',
+  'ai social media post', 'ai instagram caption', 'ai tweet generator', 'ai linkedin post', 'ai facebook post',
+  'ai email writer', 'ai cold email', 'ai follow up email', 'ai newsletter', 'ai subject line',
+  'ai story writer', 'ai novel writer', 'ai screenplay', 'ai script writer', 'ai dialogue writer',
+  'ai poem generator', 'ai song lyrics', 'ai rap generator', 'ai joke generator', 'ai quote generator',
+  'ai academic writing', 'ai thesis helper', 'ai abstract writer', 'ai citation generator', 'ai paraphraser',
+  'ai grammar checker', 'ai spell check', 'ai proofreader', 'ai plagiarism checker', 'ai rewriter',
+  'ai text simplifier', 'ai text expander', 'ai bullet points', 'ai meeting summary', 'ai report summary',
+
+  // ── AI × Business & Productivity ─────────────────────────────────────
+  'ai business plan', 'ai pitch deck', 'ai investor deck', 'ai financial model', 'ai market research',
+  'ai competitor analysis', 'ai swot analysis', 'ai strategy', 'ai okr', 'ai kpi tracker',
+  'ai project manager', 'ai task planner', 'ai sprint planner', 'ai roadmap', 'ai prioritization',
+  'ai meeting notes', 'ai meeting agenda', 'ai action items', 'ai follow up', 'ai reminder ai',
+  'ai crm', 'ai lead generation', 'ai sales assistant', 'ai customer service', 'ai helpdesk',
+  'ai contract review', 'ai legal draft', 'ai invoice generator', 'ai proposal writer', 'ai quote maker',
+  'ai data analysis', 'ai excel helper', 'ai spreadsheet formula', 'ai chart maker', 'ai dashboard',
+  'ai recruitment', 'ai job description', 'ai interview questions', 'ai performance review', 'ai onboarding',
+
+  // ── AI × Education & Learning ─────────────────────────────────────────
+  'ai math solver', 'ai equation solver', 'ai homework helper', 'ai study plan', 'ai flashcard maker',
+  'ai quiz generator', 'ai exam prep', 'ai mcq generator', 'ai question answer', 'ai doubt solver',
+  'ai science tutor', 'ai physics solver', 'ai chemistry helper', 'ai biology tutor', 'ai history tutor',
+  'ai language tutor', 'ai english tutor', 'ai grammar tutor', 'ai pronunciation', 'ai vocabulary',
+  'ai coding tutor', 'ai code explainer', 'ai debug helper', 'ai algorithm', 'ai data structures',
+  'ai lesson plan', 'ai curriculum', 'ai assignment maker', 'ai rubric generator', 'ai feedback teacher',
+  'ai reading comprehension', 'ai speed reading', 'ai summarize book', 'ai book notes', 'ai study notes',
+
+  // ── AI × Health & Wellness ────────────────────────────────────────────
+  'ai doctor', 'ai symptom checker', 'ai diagnosis', 'ai health advice', 'ai medical report',
+  'ai nutrition plan', 'ai diet plan', 'ai meal plan', 'ai calorie counter ai', 'ai recipe generator',
+  'ai workout plan', 'ai fitness plan', 'ai exercise guide', 'ai yoga pose', 'ai personal trainer ai',
+  'ai mental health', 'ai therapy', 'ai meditation guide', 'ai stress relief ai', 'ai sleep advice',
+  'ai skin analysis', 'ai dermatology', 'ai hair analysis', 'ai eye test ai', 'ai dental check',
+  'ai pregnancy guide', 'ai baby development', 'ai parenting advice ai', 'ai child health', 'ai vaccination',
+  'ai drug information', 'ai medicine guide', 'ai dosage calculator', 'ai interaction checker', 'ai side effects',
+
+  // ── AI × Finance & Investment ─────────────────────────────────────────
+  'ai stock picker', 'ai trading signals', 'ai portfolio optimizer', 'ai risk assessment', 'ai financial advisor',
+  'ai crypto signals', 'ai crypto analysis', 'ai market prediction', 'ai price prediction', 'ai sentiment analysis',
+  'ai tax calculator', 'ai tax filing', 'ai expense categorizer', 'ai budget planner ai', 'ai savings plan',
+  'ai insurance advisor', 'ai loan advisor', 'ai mortgage calculator ai', 'ai credit score ai', 'ai debt planner',
+  'ai real estate valuation', 'ai property analysis', 'ai rental income', 'ai investment advice', 'ai retirement plan',
+
+  // ── AI × Food & Cooking ───────────────────────────────────────────────
+  'ai recipe generator', 'ai meal planner ai', 'ai cooking assistant', 'ai ingredient substitution', 'ai nutrition analysis',
+  'ai food identifier', 'ai calorie scanner', 'ai restaurant recommender', 'ai wine pairing', 'ai cocktail maker',
+  'ai grocery list ai', 'ai pantry manager', 'ai food waste reducer', 'ai diet advisor', 'ai allergy checker food',
+  'ai baking assistant', 'ai chef assistant', 'ai menu planner', 'ai food blog writer', 'ai food photo enhancer',
+
+  // ── AI × Travel & Places ──────────────────────────────────────────────
+  'ai travel planner', 'ai itinerary maker', 'ai trip advisor ai', 'ai hotel recommender', 'ai flight finder',
+  'ai destination guide', 'ai travel budget ai', 'ai packing list', 'ai visa guide ai', 'ai travel insurance ai',
+  'ai local guide', 'ai tourist guide', 'ai landmark identifier', 'ai monument info', 'ai museum guide',
+  'ai language translator travel', 'ai currency converter ai', 'ai time zone', 'ai weather travel', 'ai map ai',
+
+  // ── AI × Real Estate & Property ──────────────────────────────────────
+  'ai property valuation', 'ai house price', 'ai rent estimator', 'ai investment property', 'ai real estate ai',
+  'ai virtual staging', 'ai home renovation', 'ai renovation cost', 'ai construction planner', 'ai architect ai',
+  'ai interior visualizer', 'ai room visualizer', 'ai paint color ai', 'ai furniture ar', 'ai space planner',
+
+  // ── AI × Social Media & Marketing ────────────────────────────────────
+  'ai influencer', 'ai content strategy', 'ai social media manager', 'ai engagement booster', 'ai viral content',
+  'ai hashtag generator', 'ai seo optimizer', 'ai keyword research ai', 'ai backlink analyzer', 'ai rank tracker ai',
+  'ai ad creative', 'ai ad copy generator', 'ai a/b test', 'ai conversion optimizer', 'ai landing page',
+  'ai brand voice', 'ai tone analyzer', 'ai sentiment monitor', 'ai reputation manager', 'ai review responder',
+  'ai video script', 'ai youtube script', 'ai podcast script', 'ai reel script', 'ai tiktok script',
+
+  // ── AI × Music & Audio ────────────────────────────────────────────────
+  'ai music generator', 'ai beat generator', 'ai melody maker', 'ai chord progression', 'ai song composer',
+  'ai lyrics generator', 'ai rap lyrics', 'ai music arranger', 'ai mastering', 'ai mixing ai',
+  'ai voice generator', 'ai narrator', 'ai audiobook creator', 'ai podcast creator ai', 'ai jingle maker',
+  'ai sound effects', 'ai background music', 'ai royalty free music', 'ai music video', 'ai cover song',
+
+  // ── AI × Legal & Government ───────────────────────────────────────────
+  'ai lawyer', 'ai legal advisor', 'ai contract analyzer', 'ai terms of service', 'ai privacy policy',
+  'ai legal document', 'ai nda generator', 'ai will generator', 'ai lease agreement', 'ai power of attorney',
+  'ai compliance checker', 'ai gdpr', 'ai copyright checker', 'ai trademark search', 'ai patent search',
+  'ai government forms', 'ai tax advice', 'ai customs guide', 'ai import export', 'ai trade regulations',
+
+  // ── AI × Coding & Development ─────────────────────────────────────────
+  'ai code generator', 'ai code completion', 'ai code review', 'ai bug fixer', 'ai refactoring',
+  'ai unit test generator', 'ai api builder', 'ai database designer', 'ai sql generator', 'ai regex generator',
+  'ai github copilot clone', 'ai devops', 'ai ci cd', 'ai documentation', 'ai readme generator',
+  'ai app builder', 'ai website builder', 'ai no code ai', 'ai low code', 'ai automation builder',
+
+  // ── AI × Kids & Parenting ─────────────────────────────────────────────
+  'ai bedtime story', 'ai kids story', 'ai fairy tale generator', 'ai children book', 'ai educational ai',
+  'ai homework ai', 'ai kids tutor', 'ai drawing teacher', 'ai creativity kids', 'ai activity generator',
+  'ai parenting tips ai', 'ai baby name', 'ai child development ai', 'ai school readiness', 'ai learning path',
+
+  // ── AI × Religion & Culture ───────────────────────────────────────────
+  'ai quran tafsir', 'ai islamic advice', 'ai dua generator', 'ai sermon writer', 'ai bible study ai',
+  'ai prayer guide ai', 'ai spiritual advisor', 'ai horoscope ai', 'ai tarot ai', 'ai astrology ai',
+  'ai culture guide', 'ai language learning ai', 'ai dialect translator', 'ai accent coach', 'ai calligraphy ai',
+
+  // ── AI × Accessibility ───────────────────────────────────────────────
+  'ai screen reader', 'ai image description', 'ai alt text generator', 'ai sign language ai', 'ai lip reading',
+  'ai hearing aid ai', 'ai caption generator', 'ai subtitle generator', 'ai live transcription', 'ai braille ai',
+  'ai cognitive assist', 'ai memory aid', 'ai dementia app', 'ai autism support', 'ai adhd helper',
+
+  // ── AI × Science & Research ──────────────────────────────────────────
+  'ai research assistant', 'ai literature review', 'ai paper summarizer', 'ai citation finder', 'ai experiment planner',
+  'ai data visualizer', 'ai statistical analysis', 'ai hypothesis generator', 'ai lab assistant', 'ai science news ai',
+  'ai climate model', 'ai weather prediction ai', 'ai earthquake prediction', 'ai astronomy ai', 'ai space explorer',
+
+  // ── AI × Miscellaneous ───────────────────────────────────────────────
+  'ai game generator', 'ai game npc', 'ai game design', 'ai game level', 'ai game dialogue',
+  'ai event planner', 'ai wedding planner ai', 'ai party planner ai', 'ai gift recommender', 'ai anniversary ideas',
+  'ai dream interpreter', 'ai personality test ai', 'ai compatibility test', 'ai relationship advice ai', 'ai breakup advice',
+  'ai life coach', 'ai career advisor', 'ai skill assessment', 'ai learning roadmap', 'ai goal setting',
+  'ai news summarizer', 'ai fact checker', 'ai bias detector', 'ai misinformation', 'ai credibility score',
+  'ai shopping assistant', 'ai product recommender', 'ai price negotiator', 'ai deal finder ai', 'ai review analyzer',
+  'ai pet care', 'ai vet advisor', 'ai animal identifier ai', 'ai pet training ai', 'ai dog breed identifier',
+  'ai plant care', 'ai plant disease detector', 'ai garden planner ai', 'ai crop advisor', 'ai soil analysis',
+  'ai car advisor', 'ai mechanic ai', 'ai fault diagnosis ai', 'ai driving coach', 'ai route optimizer ai',
+  'ai safety analyzer', 'ai risk predictor', 'ai fraud detector', 'ai spam detector', 'ai phishing detector',
 
   // ── Speed & Safety / Traffic / Radar ─────────────────────────────────
   'speed camera', 'radar detector', 'speed trap', 'traffic camera', 'red light camera',
@@ -291,9 +439,8 @@ const TRENDING_KEYWORDS = [...new Set([
   'genealogy', 'family tree', 'ancestry', 'dna app', 'heritage app',
   'coin collection', 'stamp collection', 'card collection', 'toy collection', 'book collection',
   'wine collection', 'whiskey tracker', 'beer log', 'spirits guide', 'cellar app',
-  'cigar app', 'tobacco pipe', 'hookah guide', 'vaping app', 'mod app',
   'tattoo design', 'tattoo finder', 'piercing guide', 'body art', 'henna design',
-  'astro photography', 'telescope app', 'planet viewer', 'galaxy explorer', 'space news',
+  'telescope app', 'planet viewer', 'galaxy explorer', 'space news', 'space app',
   'climate change', 'carbon footprint', 'eco app', 'sustainability', 'recycling guide',
   'volunteer app', 'charity app', 'crowdfunding donate', 'blood donation', 'food donation',
   'legal aid', 'lawyer finder', 'court dates', 'bail tracker', 'legal document',
