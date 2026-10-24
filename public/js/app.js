@@ -76,6 +76,20 @@ function detailView(app) {
   const icon = app.icon ? `<img class="detail-icon" src="${app.icon}" alt=""/>` : `<div class="detail-icon-fallback">📱</div>`;
   const screenshots = app.screenshots?.length
     ? `<div class="detail-section-title">Screenshots</div><div class="screenshots-row">${app.screenshots.map(s=>`<img class="screenshot" src="${s}"/>`).join('')}</div>` : '';
+
+  const kwHtml = app.extractedKeywords && app.extractedKeywords.length
+    ? `<div class="extracted-keywords-section">
+         <div class="detail-section-title">Target Keywords &amp; Metadata Density (${app.extractedKeywords.length})</div>
+         <div class="extracted-chips">
+           ${app.extractedKeywords.slice(0, 16).map(k => `
+             <span class="kw-chip" onclick="quickAnalyzeKeyword('${k.term.replace(/'/g, "\\'")}')" title="Frequency: ${k.frequency} · Click to analyze keyword">
+               ${k.term} <span class="kw-density">${k.density}</span>
+             </span>
+           `).join('')}
+         </div>
+       </div>`
+    : '';
+
   return `
 <div class="detail-card">
   <div class="detail-hero">${icon}
@@ -106,7 +120,9 @@ function detailView(app) {
       <div class="meta-item"><div class="meta-key">Install range</div><div class="meta-val">${app.installs||fmtInstalls(app.minInstalls)}</div></div>
       <div class="meta-item"><div class="meta-key">Ratings count</div><div class="meta-val">${fmtNum(app.ratings)}</div></div>
     </div>
+    ${kwHtml}
     <div class="detail-actions">
+      <button class="btn-outline" onclick="quickAnalyzeKeyword('${(app.title||'').replace(/'/g, "\\'")}')">Analyze Title Keyword 📊</button>
       <button class="btn-outline" onclick="loadSimilar('${app.appId}')">Similar apps</button>
       <button class="btn-outline" onclick="loadReviews('${app.appId}')">Reviews</button>
       ${app.developerId?`<button class="btn-outline" onclick="loadDev('${app.developerId}')">More by dev</button>`:''}
@@ -531,7 +547,14 @@ function clearDates() {
 }
 
 /* ── Tabs ───────────────────────────────────────────── */
-const tabTitles={search:'Search Apps',trending:'Trending Discovery',top:'Top Charts',lookup:'App Lookup',developer:'Developer Apps'};
+const tabTitles={
+  search: 'Search Apps',
+  keywords: 'Keyword ASO & Volume Intelligence',
+  trending: 'Trending Discovery',
+  top: 'Top Charts',
+  lookup: 'App Lookup',
+  developer: 'Developer Apps'
+};
 function switchTab(name) {
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===name));
   document.querySelectorAll('.tab-panel').forEach(el=>el.classList.toggle('active',el.id==='tab-'+name));
@@ -587,10 +610,332 @@ function pickSuggest(val) {
   runSearch();
 }
 
+/* ── Keyword ASO & Volume Intelligence ─────────────── */
+let keywordSuggestTimer = null;
+let keywordSuggestActive = -1;
+
+function quickAnalyzeKeyword(kw, country) {
+  switchTab('keywords');
+  if (kw) document.getElementById('keywordInput').value = kw;
+  if (country) document.getElementById('keywordCountry').value = country;
+  runKeywordAnalysis();
+}
+
+async function fetchKeywordSuggestions(q) {
+  if (!q || q.length < 2) { closeKeywordSuggest(); return; }
+  try {
+    const country = document.getElementById('keywordCountry').value || 'us';
+    const lang = document.getElementById('globalLang').value || 'en';
+    const data = await fetchJson(`${API}/api/suggest?q=${encodeURIComponent(q)}&lang=${lang}&country=${country}`);
+    showKeywordSuggest(Array.isArray(data) ? data : []);
+  } catch(_) {}
+}
+
+function showKeywordSuggest(items) {
+  const list = document.getElementById('keywordSuggestList');
+  if (!items.length) { closeKeywordSuggest(); return; }
+  list.innerHTML = items.map((s,i) => `<li data-i="${i}" onclick="pickKeywordSuggest('${s.replace(/'/g,'&#39;')}')">${s}</li>`).join('');
+  list.classList.add('open');
+  keywordSuggestActive = -1;
+}
+
+function closeKeywordSuggest() {
+  const list = document.getElementById('keywordSuggestList');
+  if (list) list.classList.remove('open');
+  keywordSuggestActive = -1;
+}
+
+function pickKeywordSuggest(val) {
+  document.getElementById('keywordInput').value = val;
+  closeKeywordSuggest();
+  runKeywordAnalysis();
+}
+
+async function runKeywordAnalysis(customKw, customCountry) {
+  const btn = document.getElementById('keywordAnalyzeBtn');
+  const out = document.getElementById('keywordResults');
+  const kw = (customKw || document.getElementById('keywordInput').value).trim();
+  const country = customCountry || document.getElementById('keywordCountry').value || 'us';
+  const lang = document.getElementById('globalLang').value || 'en';
+
+  if (!kw) {
+    renderError(out, 'Please enter a search keyword to analyze.');
+    return;
+  }
+
+  btn.disabled = true;
+  out.innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Analyzing "${kw}" in ${country.toUpperCase()} market (Search volume, ASO difficulty, competitor rankings)...</span>
+    </div>
+  `;
+
+  try {
+    const data = await fetchJson(`${API}/api/keyword-analysis?q=${encodeURIComponent(kw)}&country=${country}&lang=${lang}`);
+    renderKeywordReport(out, data);
+  } catch (err) {
+    renderError(out, err.message || 'Failed to analyze keyword');
+  }
+  btn.disabled = false;
+}
+
+function renderKeywordReport(el, data) {
+  const { keyword, country, countryInfo, volume, difficulty, opportunity, downloadEstimates, stats, rankedApps, suggestions } = data;
+
+  const flag = countryInfo?.flag || '🌐';
+  const cName = countryInfo?.name || country.toUpperCase();
+
+  const volColor = volume?.color || 'green';
+  const diffColor = difficulty?.color || 'yellow';
+  const oppBadge = `<span class="badge ${opportunity.badgeClass}" style="font-size:12px;padding:4px 10px">${opportunity.label}</span>`;
+
+  const suggestionsHtml = suggestions?.length
+    ? suggestions.map(s => `
+        <div class="suggestion-item" onclick="quickAnalyzeKeyword('${s.term.replace(/'/g, "\\'")}', '${country}')" title="Click to analyze '${s.term}'">
+          <span class="suggestion-term">⌕ ${s.term}</span>
+          <div class="suggestion-score-wrap">
+            <span class="suggestion-score">${s.trafficScore}</span>
+            <span class="badge badge-gray">${s.trafficTier}</span>
+          </div>
+        </div>
+      `).join('')
+    : '<div style="color:var(--text3);font-size:12px">No direct long-tail suggestions found.</div>';
+
+  const competitorRows = rankedApps?.length
+    ? rankedApps.map(app => {
+        let matchClass = 'match-none';
+        let matchText = 'None';
+        if (app.matchType === 'exact') { matchClass = 'match-exact'; matchText = 'Exact Match'; }
+        else if (app.matchType === 'broad') { matchClass = 'match-broad'; matchText = 'Broad Match'; }
+        else if (app.matchType === 'partial') { matchClass = 'match-partial'; matchText = 'Partial Match'; }
+
+        const icon = app.icon
+          ? `<img class="comp-icon" src="${app.icon}" alt="" onerror="this.src=''"/>`
+          : `<div class="comp-icon" style="display:flex;align-items:center;justify-content:center;font-size:18px">📱</div>`;
+
+        return `
+          <tr onclick="openDetail('${app.appId}')" title="Click to view app details">
+            <td class="comp-rank">#${app.rank}</td>
+            <td>
+              <div class="comp-app-cell">
+                ${icon}
+                <div class="comp-app-info">
+                  <div class="comp-title">${app.title || 'Unknown'}</div>
+                  <div class="comp-dev">${app.developer || '—'}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="match-badge ${matchClass}">${matchText}</span></td>
+            <td style="font-family:var(--mono);color:var(--accent);font-weight:600">${app.installsText || '—'}</td>
+            <td style="font-family:var(--mono);color:var(--yellow);font-weight:600">${app.score !== '—' ? app.score + ' ★' : '—'}</td>
+            <td style="font-family:var(--mono);color:var(--text3);font-size:11px">${app.updated || '—'}</td>
+          </tr>
+        `;
+      }).join('')
+    : `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem">No ranked apps found for this keyword in ${cName}</td></tr>`;
+
+  el.innerHTML = `
+    <div class="keyword-report">
+      <!-- HERO -->
+      <div class="keyword-hero">
+        <div class="keyword-hero-left">
+          <div class="keyword-title-row">
+            <span class="keyword-title">"${keyword}"</span>
+            <span class="keyword-country-pill">${flag} ${cName}</span>
+            ${oppBadge}
+          </div>
+          <div class="keyword-hero-meta">
+            <div>Competitor Title Matches: <span>${stats.exactMatches} Exact, ${stats.broadMatches} Broad</span> in Top 10</div>
+            <div>Avg Rating: <span>${stats.avgRating} ★</span></div>
+            <div>Avg Installs: <span>${fmtInstalls(stats.avgInstalls)}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-outline" onclick="loadCountryComparison('${keyword.replace(/'/g, "\\'")}')" id="compareCountriesBtn">
+            Compare Global Storefronts 🌐
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 METRICS CARDS -->
+      <div class="keyword-metrics-grid">
+        <!-- 1. Volume -->
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-card-label">Search Volume</span>
+            <span class="metric-badge badge-${volColor}">${volume.tier}</span>
+          </div>
+          <div class="metric-main-row">
+            <span class="metric-big-num ${volColor}">${volume.score}</span>
+            <span class="metric-max-score">/ 100</span>
+          </div>
+          <div class="metric-bar-track">
+            <div class="metric-bar-fill ${volColor}" style="width: ${volume.score}%"></div>
+          </div>
+          <div class="metric-sub-detail">
+            Est. Monthly Searches: <strong>${volume.searchesPerMonth}</strong>
+          </div>
+        </div>
+
+        <!-- 2. Difficulty -->
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-card-label">ASO Difficulty</span>
+            <span class="metric-badge badge-${diffColor}">${difficulty.label}</span>
+          </div>
+          <div class="metric-main-row">
+            <span class="metric-big-num ${diffColor}">${difficulty.score}</span>
+            <span class="metric-max-score">/ 100</span>
+          </div>
+          <div class="metric-bar-track">
+            <div class="metric-bar-fill ${diffColor}" style="width: ${difficulty.score}%"></div>
+          </div>
+          <div class="metric-sub-detail">
+            Title Density: <strong>${difficulty.titleDensity}%</strong> · Install Barrier: <strong>${difficulty.installsBarrier}%</strong>
+          </div>
+        </div>
+
+        <!-- 3. Strategic Opportunity -->
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-card-label">Opportunity Score</span>
+            <span class="metric-badge ${opportunity.badgeClass}">${opportunity.label}</span>
+          </div>
+          <div class="metric-main-row">
+            <span class="metric-big-num green">${opportunity.score}</span>
+            <span class="metric-max-score">/ 100</span>
+          </div>
+          <div class="metric-bar-track">
+            <div class="metric-bar-fill green" style="width: ${opportunity.score}%"></div>
+          </div>
+          <div class="metric-sub-detail" style="font-size:11.5px">
+            ${opportunity.advice}
+          </div>
+        </div>
+
+        <!-- 4. Estimated Daily Downloads -->
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-card-label">Est. Daily Downloads</span>
+            <span class="metric-badge badge-blue">Rank Impact</span>
+          </div>
+          <div class="download-tier-list">
+            <div class="tier-row"><span class="tier-name">Rank #1</span><span class="tier-val">${downloadEstimates.rank1.range} /d</span></div>
+            <div class="tier-row"><span class="tier-name">Rank #2–#3</span><span class="tier-val">${downloadEstimates.rank2_3.range} /d</span></div>
+            <div class="tier-row"><span class="tier-name">Rank #4–#5</span><span class="tier-val">${downloadEstimates.rank4_5.range} /d</span></div>
+            <div class="tier-row"><span class="tier-name">Rank #6–#10</span><span class="tier-val">${downloadEstimates.rank6_10.range} /d</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-COLUMNS: Competitors vs Suggestions/Global -->
+      <div class="aso-columns">
+        <!-- LEFT: Competitors -->
+        <div class="aso-panel">
+          <div class="aso-panel-header">
+            <div class="aso-panel-title">🏆 Top Ranking Competitors in ${cName}</div>
+            <span class="aso-panel-sub">${rankedApps.length} apps analyzed</span>
+          </div>
+          <div class="competitor-table-wrap">
+            <table class="competitor-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>App</th>
+                  <th>Title Match</th>
+                  <th>Installs</th>
+                  <th>Rating</th>
+                  <th>Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${competitorRows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- RIGHT: Suggestions & Global -->
+        <div style="display:flex;flex-direction:column;gap:1.25rem">
+          <!-- Suggestions -->
+          <div class="aso-panel">
+            <div class="aso-panel-header">
+              <div class="aso-panel-title">💡 Related Long-Tail Keywords</div>
+              <span class="aso-panel-sub">Click to analyze</span>
+            </div>
+            <div class="suggestions-grid">
+              ${suggestionsHtml}
+            </div>
+          </div>
+
+          <!-- Multi-Country Card -->
+          <div class="aso-panel" id="countryComparisonPanel">
+            <div class="aso-panel-header">
+              <div class="aso-panel-title">🌐 Global Storefront Ranking</div>
+              <span class="aso-panel-sub">Top App by Market</span>
+            </div>
+            <div id="countryComparisonBody" class="country-comp-grid">
+              <button class="btn-outline" style="width:100%" onclick="loadCountryComparison('${keyword.replace(/'/g, "\\'")}')">
+                Load Global Comparison (8 Countries)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadCountryComparison(keyword) {
+  const container = document.getElementById('countryComparisonBody');
+  if (!container) return;
+  container.innerHTML = `<div class="loading-state" style="padding:1rem"><div class="spinner"></div><span>Querying global storefronts...</span></div>`;
+
+  try {
+    const data = await fetchJson(`${API}/api/keyword-countries?q=${encodeURIComponent(keyword)}`);
+    const list = data.countries || [];
+
+    if (!list.length) {
+      container.innerHTML = `<div style="color:var(--text3);font-size:12px">No country data available</div>`;
+      return;
+    }
+
+    container.innerHTML = list.map(c => {
+      const topApp = c.topApp;
+      const appTitle = topApp ? topApp.title : 'No app found';
+      const appId = topApp?.appId || '';
+      const installs = topApp?.installsText ? `(${topApp.installsText})` : '';
+      const matchBadge = topApp?.titleMatch === 'exact'
+        ? `<span class="badge badge-green" style="font-size:9px">Exact</span>`
+        : topApp?.titleMatch === 'broad'
+        ? `<span class="badge badge-blue" style="font-size:9px">Broad</span>`
+        : '';
+
+      return `
+        <div class="country-comp-card">
+          <div class="country-comp-left">
+            <span class="country-flag">${c.flag}</span>
+            <span class="country-label">${c.countryName}</span>
+          </div>
+          <div class="country-comp-right" ${appId ? `onclick="openDetail('${appId}')" style="cursor:pointer"` : ''}>
+            <span class="country-top-app-title" title="${appTitle}">#1: ${appTitle}</span>
+            <span style="font-size:10px;color:var(--accent);font-family:var(--mono)">${installs}</span>
+            ${matchBadge}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="error-state" style="padding:0.5rem">Failed to load country comparisons</div>`;
+  }
+}
+
 /* ── Init ───────────────────────────────────────────── */
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape') closeModal();
   if(e.key==='Enter'&&e.target.id==='searchQuery') runSearch();
+  if(e.key==='Enter'&&e.target.id==='keywordInput') runKeywordAnalysis();
   if(e.key==='Enter'&&e.target.id==='lookupId') runLookup();
   if(e.key==='Enter'&&e.target.id==='devId') runDev();
 });
@@ -618,14 +963,51 @@ document.addEventListener('DOMContentLoaded',()=>{
     else if (e.key === 'Enter' && suggestActive >= 0) { pickSuggest(items[suggestActive].textContent); e.stopPropagation(); }
     else if (e.key === 'Escape') { closeSuggest(); }
   });
-  document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) closeSuggest(); });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.autocomplete-wrap')) {
+      closeSuggest();
+      closeKeywordSuggest();
+    }
+  });
+
+  // Keyword ASO listeners
+  const kwBtn = document.getElementById('keywordAnalyzeBtn');
+  if (kwBtn) kwBtn.addEventListener('click', () => runKeywordAnalysis());
+
+  const kwInput = document.getElementById('keywordInput');
+  if (kwInput) {
+    kwInput.addEventListener('input', e => {
+      clearTimeout(keywordSuggestTimer);
+      keywordSuggestTimer = setTimeout(() => fetchKeywordSuggestions(e.target.value.trim()), 280);
+    });
+    kwInput.addEventListener('keydown', e => {
+      const list = document.getElementById('keywordSuggestList');
+      if (!list) return;
+      const items = list.querySelectorAll('li');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') { keywordSuggestActive = Math.min(keywordSuggestActive+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===keywordSuggestActive)); e.preventDefault(); }
+      else if (e.key === 'ArrowUp') { keywordSuggestActive = Math.max(keywordSuggestActive-1, 0); items.forEach((el,i)=>el.classList.toggle('active',i===keywordSuggestActive)); e.preventDefault(); }
+      else if (e.key === 'Enter' && keywordSuggestActive >= 0) { pickKeywordSuggest(items[keywordSuggestActive].textContent); e.stopPropagation(); }
+      else if (e.key === 'Escape') { closeKeywordSuggest(); }
+    });
+  }
+
+  const kwCountry = document.getElementById('keywordCountry');
+  if (kwCountry) {
+    kwCountry.addEventListener('change', () => {
+      const val = document.getElementById('keywordInput')?.value?.trim();
+      if (val) runKeywordAnalysis();
+    });
+  }
+
   document.getElementById('topBtn').addEventListener('click',runTop);
   document.getElementById('trendingBtn').addEventListener('click',()=>runTrendingDiscovery());
   document.getElementById('trendingSort').addEventListener('change',renderTrendingGrid);
   document.getElementById('trendingAutoRefresh').addEventListener('change',updateTrendingAutoRefresh);
   document.getElementById('trendingRefreshMinutes').addEventListener('change',updateTrendingAutoRefresh);
   ['trendingDaysBack','trendingMinRating','trendingMinInstalls','trendingMaxResults','trendingCountry','globalLang'].forEach(id => {
-    document.getElementById(id).addEventListener('change', refreshTrendingCacheStatus);
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', refreshTrendingCacheStatus);
   });
   document.getElementById('lookupBtn').addEventListener('click',()=>runLookup());
   document.getElementById('devBtn').addEventListener('click',()=>runDev());

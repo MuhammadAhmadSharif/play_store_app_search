@@ -17,6 +17,7 @@
   </div>
   <nav class="sidebar-nav">
     <button class="nav-item active" data-tab="search"><span class="nav-icon">⌕</span> Search</button>
+    <button class="nav-item" data-tab="keywords"><span class="nav-icon">📊</span> Keyword ASO</button>
     <button class="nav-item" data-tab="trending"><span class="nav-icon">↯</span> Trending</button>
     <button class="nav-item" data-tab="top"><span class="nav-icon">↑</span> Top Charts</button>
     <button class="nav-item" data-tab="lookup"><span class="nav-icon">◎</span> App Lookup</button>
@@ -191,6 +192,60 @@
         <div class="empty-icon">⌕</div>
         <p>Set filters and click Search — keyword is optional</p>
         <p class="empty-sub">Use release date + min installs to discover new trending apps</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- KEYWORD ASO & VOLUME INTELLIGENCE TAB -->
+  <section class="tab-panel" id="tab-keywords">
+    <div class="filter-bar">
+      <div class="search-row">
+        <div class="autocomplete-wrap" style="flex:2">
+          <input class="search-input" id="keywordInput" type="text" autocomplete="off"
+            placeholder="Enter keyword to analyze (e.g. photo editor, pdf scanner, vpn proxy, habit tracker)..." />
+          <ul class="suggest-list" id="keywordSuggestList"></ul>
+        </div>
+        <div class="country-select-wrap">
+          <select id="keywordCountry" class="search-select">
+            <option value="us" selected>🇺🇸 United States</option>
+            <option value="gb">🇬🇧 United Kingdom</option>
+            <option value="in">🇮🇳 India</option>
+            <option value="pk">🇵🇰 Pakistan</option>
+            <option value="ca">🇨🇦 Canada</option>
+            <option value="au">🇦🇺 Australia</option>
+            <option value="de">🇩🇪 Germany</option>
+            <option value="fr">🇫🇷 France</option>
+            <option value="br">🇧🇷 Brazil</option>
+            <option value="jp">🇯🇵 Japan</option>
+            <option value="kr">🇰🇷 South Korea</option>
+            <option value="sa">🇸🇦 Saudi Arabia</option>
+            <option value="ae">🇦🇪 UAE</option>
+            <option value="tr">🇹🇷 Turkey</option>
+            <option value="es">🇪🇸 Spain</option>
+            <option value="it">🇮🇹 Italy</option>
+            <option value="id">🇮🇩 Indonesia</option>
+            <option value="mx">🇲🇽 Mexico</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="keywordAnalyzeBtn">Analyze Keyword</button>
+      </div>
+
+      <div class="quick-ids">
+        <span class="preset-label">Quick ASO terms:</span>
+        <button class="chip" onclick="quickAnalyzeKeyword('ai chat')">ai chat</button>
+        <button class="chip" onclick="quickAnalyzeKeyword('pdf scanner')">pdf scanner</button>
+        <button class="chip" onclick="quickAnalyzeKeyword('vpn proxy')">vpn proxy</button>
+        <button class="chip" onclick="quickAnalyzeKeyword('photo editor')">photo editor</button>
+        <button class="chip" onclick="quickAnalyzeKeyword('budget planner')">budget planner</button>
+        <button class="chip" onclick="quickAnalyzeKeyword('habit tracker')">habit tracker</button>
+        <button class="chip" onclick="quickAnalyzeKeyword('crypto wallet')">crypto wallet</button>
+      </div>
+    </div>
+    <div class="results-area" id="keywordResults">
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <p>Enter a keyword and select a country to run full ASO analysis</p>
+        <p class="empty-sub">Computes Search Volume, ASO Difficulty, Strategic Opportunity, Download Estimates, and Competitor Title Matching.</p>
       </div>
     </div>
   </section>

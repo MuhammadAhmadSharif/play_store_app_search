@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import gplay from 'google-play-scraper';
+import { analyzeKeyword, compareKeywordAcrossCountries, extractMetadataKeywords } from './aso.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1245,7 +1246,12 @@ app.get('/api/app/:appId', async (req, res) => {
     const { appId } = req.params;
     const { lang = 'en', country = 'us' } = req.query;
     const result = await gplay.app({ appId, lang, country });
-    res.json(pickUseful(result));
+    const appData = pickUseful(result);
+    if (appData) {
+      appData.description = result.description || null;
+      appData.extractedKeywords = extractMetadataKeywords(result);
+    }
+    res.json(appData);
   } catch (err) {
     console.error('App detail error:', err.message);
     res.status(500).json({ error: err.message || 'Could not fetch app details' });
@@ -1327,6 +1333,60 @@ app.get('/api/reviews/:appId', async (req, res) => {
 app.get('/api/categories', (req, res) => {
   const cats = Object.keys(gplay.category).map(k => ({ id: k, name: k.replace(/_/g, ' ') }));
   res.json(cats);
+});
+
+// ASO Keyword Intelligence Analysis
+app.get('/api/keyword-analysis', async (req, res) => {
+  try {
+    const { q = '', country = 'us', lang = 'en' } = req.query;
+    const keyword = q.trim();
+    if (!keyword) {
+      return res.status(400).json({ error: 'Search keyword is required (q param)' });
+    }
+    const analysis = await analyzeKeyword(keyword, { country, lang });
+    res.json(analysis);
+  } catch (err) {
+    console.error('Keyword analysis error:', err.message);
+    res.status(500).json({ error: err.message || 'Keyword analysis failed' });
+  }
+});
+
+// ASO Multi-Country Keyword Comparison
+app.get('/api/keyword-countries', async (req, res) => {
+  try {
+    const { q = '', countries } = req.query;
+    const keyword = q.trim();
+    if (!keyword) {
+      return res.status(400).json({ error: 'Search keyword is required (q param)' });
+    }
+    const countryList = countries
+      ? countries.split(',').map(c => c.trim().toLowerCase()).filter(Boolean)
+      : ['us', 'gb', 'in', 'pk', 'de', 'fr', 'br', 'jp'];
+    const results = await compareKeywordAcrossCountries(keyword, countryList);
+    res.json({ keyword, countries: results });
+  } catch (err) {
+    console.error('Keyword countries comparison error:', err.message);
+    res.status(500).json({ error: err.message || 'Keyword countries comparison failed' });
+  }
+});
+
+// Extract keywords & metadata density for a given app
+app.get('/api/app-keywords/:appId', async (req, res) => {
+  try {
+    const { appId } = req.params;
+    const { lang = 'en', country = 'us' } = req.query;
+    const app = await gplay.app({ appId, lang, country });
+    const keywords = extractMetadataKeywords(app);
+    res.json({
+      appId,
+      title: app.title,
+      totalKeywords: keywords.length,
+      keywords,
+    });
+  } catch (err) {
+    console.error('App keywords error:', err.message);
+    res.status(500).json({ error: err.message || 'Could not extract keywords' });
+  }
 });
 
 // Serve frontend

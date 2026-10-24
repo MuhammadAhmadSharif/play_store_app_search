@@ -1,3 +1,4 @@
 // Set this to your deployed backend URL when the frontend is hosted separately.
-// Example: window.PLAY_EXPLORER_API_BASE = 'https://play-explorer-api.onrender.com';
-window.PLAY_EXPLORER_API_BASE = 'https://play-store-app-search.onrender.com';
+// Auto-detects local development vs remote production.
+const isLocal = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+window.PLAY_EXPLORER_API_BASE = isLocal ? '' : 'https://play-store-app-search.onrender.com';
