@@ -51,12 +51,41 @@
     <div class="filter-bar">
 
       <div class="search-row">
-        <div class="autocomplete-wrap">
+        <div class="autocomplete-wrap" style="flex:2">
           <input class="search-input" id="searchQuery" type="text" autocomplete="off"
-            placeholder="Keyword (optional) — leave blank to browse all apps by filters below" />
+            placeholder="Search by app name, keyword, or package ID (e.g. spotify, whatsapp, inshot, com.adobe.scan.android)..." />
           <ul class="suggest-list" id="suggestList"></ul>
         </div>
+        <div class="country-select-wrap">
+          <select id="searchCountry" class="search-select">
+            <option value="us" selected>🇺🇸 United States</option>
+            <option value="pk">🇵🇰 Pakistan</option>
+            <option value="in">🇮🇳 India</option>
+            <option value="gb">🇬🇧 United Kingdom</option>
+            <option value="ca">🇨🇦 Canada</option>
+            <option value="au">🇦🇺 Australia</option>
+            <option value="de">🇩🇪 Germany</option>
+            <option value="fr">🇫🇷 France</option>
+            <option value="br">🇧🇷 Brazil</option>
+            <option value="jp">🇯🇵 Japan</option>
+            <option value="sa">🇸🇦 Saudi Arabia</option>
+            <option value="ae">🇦🇪 UAE</option>
+            <option value="tr">🇹🇷 Turkey</option>
+            <option value="es">🇪🇸 Spain</option>
+            <option value="it">🇮🇹 Italy</option>
+          </select>
+        </div>
         <button class="btn-primary" id="searchBtn">Search</button>
+      </div>
+
+      <div class="quick-ids">
+        <span class="preset-label">Quick App searches:</span>
+        <button class="chip" onclick="quickSearchApp('spotify')">Spotify</button>
+        <button class="chip" onclick="quickSearchApp('whatsapp')">WhatsApp</button>
+        <button class="chip" onclick="quickSearchApp('inshot')">InShot</button>
+        <button class="chip" onclick="quickSearchApp('capcut')">CapCut</button>
+        <button class="chip" onclick="quickSearchApp('duolingo')">Duolingo</button>
+        <button class="chip" onclick="quickSearchApp('telegram')">Telegram</button>
       </div>
 
       <div class="hint-bar">
@@ -65,10 +94,10 @@
       </div>
 
       <label class="scope-toggle">
-        <input id="searchAllCategories" type="checkbox" checked />
+        <input id="searchAllCategories" type="checkbox" />
         <span>
           <strong>Search all categories</strong>
-          Fan out across Play Store categories before applying filters.
+          Fan out across Play Store categories when browsing without a keyword.
         </span>
       </label>
 
@@ -105,8 +134,8 @@
         <div class="filter-group">
           <label>Min installs</label>
           <select id="searchMinInstalls">
-            <option value="">Any</option>
-            <option value="1000" selected>1K+</option>
+            <option value="" selected>Any</option>
+            <option value="1000">1K+</option>
             <option value="5000">5K+</option>
             <option value="10000">10K+</option>
             <option value="50000">50K+</option>

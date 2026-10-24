@@ -31,6 +31,9 @@ function fmtDate(val) {
 /* ── Badges ─────────────────────────────────────────── */
 function makeBadges(app) {
   const b = [];
+  if (app._isExactPackage || (app._relevance && app._relevance >= 3500)) {
+    b.push(`<span class="badge" style="background:rgba(139,92,246,0.2);color:#c084fc;border:1px solid rgba(139,92,246,0.45);font-weight:700;">🎯 Top Match</span>`);
+  }
   if (app._isNew)       b.push(`<span class="badge badge-new">NEW</span>`);
   if (app.free != null) b.push(app.free ? `<span class="badge badge-green">Free</span>` : `<span class="badge badge-yellow">Paid ${app.priceText||''}</span>`);
   if (app.editorsChoice) b.push(`<span class="badge badge-blue">Editor's choice</span>`);
@@ -149,9 +152,9 @@ function renderLoadingDate(el) {
 function renderError(el, msg) {
   el.innerHTML = `<div class="error-state">⚠ ${msg}</div>`;
 }
-function renderGrid(el, apps, showRank, meta) {
+function renderGrid(el, apps, showRank, meta, prependedHtml = '') {
   if (!apps.length) {
-    el.innerHTML = `
+    el.innerHTML = (prependedHtml || '') + `
       <div class="empty-state">
         <div class="empty-icon">◌</div>
         <p>No results matched your filters.</p>
@@ -160,7 +163,7 @@ function renderGrid(el, apps, showRank, meta) {
     return;
   }
   const metaHtml = meta ? `<div class="result-meta">${meta}</div>` : `<div class="result-meta">Found <span>${apps.length}</span> apps</div>`;
-  el.innerHTML = metaHtml + `<div class="app-grid">${apps.map((a,i)=>appCard(a,showRank?i:null)).join('')}</div>`;
+  el.innerHTML = (prependedHtml || '') + metaHtml + `<div class="app-grid">${apps.map((a,i)=>appCard(a,showRank?i:null)).join('')}</div>`;
   el.querySelectorAll('.app-card').forEach((c,i) => c.style.animationDelay=`${i*0.025}s`);
 }
 
@@ -171,6 +174,7 @@ async function runSearch() {
   btn.disabled = true;
 
   const q              = document.getElementById('searchQuery').value.trim();
+  const country        = document.getElementById('searchCountry')?.value || 'us';
   const releasedAfter  = document.getElementById('searchReleasedAfter').value;
   const releasedBefore = document.getElementById('searchReleasedBefore').value;
   const minInstalls    = document.getElementById('searchMinInstalls').value;
@@ -180,6 +184,7 @@ async function runSearch() {
 
   const params = new URLSearchParams({
     q,
+    country,
     category:      document.getElementById('searchCategory').value,
     sort:          document.getElementById('searchSort').value,
     num:           document.getElementById('searchNum').value,
@@ -200,17 +205,77 @@ async function runSearch() {
 
     const parts = [];
     if (q)            parts.push(`keyword: <span>"${q}"</span>`);
+    if (country)      parts.push(`country: <span>${country.toUpperCase()}</span>`);
     if (data.scope === 'all-categories') parts.push('scope: <span>all categories</span>');
     if (wantDate)     parts.push(`released: <span>${releasedAfter||'…'} → ${releasedBefore||'now'}</span>`);
     if (minInstalls)  parts.push(`min installs: <span>${fmtInstalls(parseInt(minInstalls))}</span>`);
     const note = data.enriched ? ` <span class="meta-note">(* = updated date used as proxy where released date unavailable)</span>` : '';
     const meta = `<span>${data.total}</span> app${data.total!==1?'s':''} found${parts.length?' &nbsp;·&nbsp; '+parts.join(' &nbsp;·&nbsp; '):''}${note}`;
-    renderGrid(out, data.apps, false, meta);
+
+    let bannerHtml = '';
+    if (data.asoSummary && data.asoSummary.volumeScore != null) {
+      const s = data.asoSummary;
+      const sTerm = s.term || q;
+      const sCountry = (s.country || country).toUpperCase();
+      const volColor = s.volumeScore >= 60 ? '#10b981' : (s.volumeScore >= 35 ? '#f59e0b' : '#9ca3af');
+      const diffColor = s.difficultyScore >= 60 ? '#ef4444' : (s.difficultyScore >= 35 ? '#f59e0b' : '#10b981');
+      bannerHtml = `
+        <div class="search-aso-banner">
+          <div class="search-aso-banner-left">
+            <span class="aso-banner-icon">📊</span>
+            <div>
+              <div class="aso-banner-title">ASO Intelligence for "<strong>${sTerm}</strong>" (${sCountry})</div>
+              <div class="aso-banner-sub">Search visibility score &amp; competitive index in ${sCountry}</div>
+            </div>
+          </div>
+          <div class="search-aso-banner-stats">
+            <div class="aso-banner-stat">
+              <span class="stat-lbl">Search Volume</span>
+              <span class="stat-val" style="color:${volColor}">${s.volumeScore} <small>/100</small></span>
+            </div>
+            <div class="aso-banner-sep"></div>
+            <div class="aso-banner-stat">
+              <span class="stat-lbl">Competition</span>
+              <span class="stat-val" style="color:${diffColor}">${s.difficultyScore} <small>/100</small></span>
+            </div>
+            <div class="aso-banner-sep"></div>
+            <div class="aso-banner-stat">
+              <span class="stat-lbl">Opportunity</span>
+              <span class="stat-val" style="color:var(--accent)">${s.opportunityScore} <small>/100</small></span>
+            </div>
+            <div class="aso-banner-sep"></div>
+            <button class="btn-sm btn-outline" onclick="quickAnalyzeKeyword('${s.term.replace(/'/g, "\\'")}', '${s.country}')" style="margin-left:6px;font-size:12px;padding:6px 12px;">Deep ASO Analysis ↗</button>
+          </div>
+        </div>
+      `;
+    }
+
+    renderGrid(out, data.apps, false, meta, bannerHtml);
   } catch(e) {
     renderError(out, e.message);
   }
   btn.disabled = false;
 }
+
+window.quickSearchApp = function(term, country) {
+  const qInput = document.getElementById('searchQuery');
+  if (qInput) qInput.value = term;
+  if (country && document.getElementById('searchCountry')) {
+    document.getElementById('searchCountry').value = country;
+  }
+  const minInstallsEl = document.getElementById('searchMinInstalls');
+  if (minInstallsEl) minInstallsEl.value = '';
+  const relAfterEl = document.getElementById('searchReleasedAfter');
+  if (relAfterEl) relAfterEl.value = '';
+  const relBeforeEl = document.getElementById('searchReleasedBefore');
+  if (relBeforeEl) relBeforeEl.value = '';
+
+  const searchTabBtn = document.querySelector('.nav-tab[data-tab="search"]');
+  if (searchTabBtn && !searchTabBtn.classList.contains('active')) {
+    searchTabBtn.click();
+  }
+  runSearch();
+};
 
 /* ── Trending discovery ────────────────────────────── */
 const trendingState = {

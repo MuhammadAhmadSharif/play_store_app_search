@@ -1269,3 +1269,97 @@ body {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* ── Country Select in Search Row ──────────────────── */
+.country-select-wrap {
+  min-width: 165px;
+}
+.search-select {
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.search-select:focus {
+  border-color: var(--accent);
+}
+
+/* ── Search ASO Intelligence Banner ────────────────── */
+.search-aso-banner {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.09) 0%, rgba(0, 229, 160, 0.06) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.search-aso-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.aso-banner-icon {
+  font-size: 24px;
+}
+.aso-banner-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.aso-banner-title strong {
+  color: var(--accent);
+}
+.aso-banner-sub {
+  font-size: 11.5px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+.search-aso-banner-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.aso-banner-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.aso-banner-stat .stat-lbl {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+}
+.aso-banner-stat .stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.aso-banner-stat .stat-val small {
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 400;
+}
+.aso-banner-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--border2);
+}

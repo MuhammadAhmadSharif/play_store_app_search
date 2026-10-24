@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import gplay from 'google-play-scraper';
 import { analyzeKeyword, compareKeywordAcrossCountries, extractMetadataKeywords } from './aso.js';
+import { searchAppsWithRelevance } from './searchService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -883,185 +884,23 @@ function getTrendingCacheEntry(key) {
 // ─── routes ─────────────────────────────────────────────────────────────────
 
 // Search apps — keyword is now OPTIONAL.
-// Without a keyword we browse by category/collection so users can discover
-// recently-released apps with 1K+ downloads without needing an app name.
+// Search apps with smart relevance ranking, direct package ID lookup, country support, and ASO insights
 app.get('/api/search', async (req, res) => {
   try {
     const {
-      q = '', category, sort = '1', num = '50', lang = 'en', country = 'us',
-      minInstalls, maxInstalls, minRating, minReviews,
-      price, contentRating, releasedAfter, releasedBefore, allCategories = '',
+      q = '', category = '', sort = '1', num = '30', lang = 'en', country = 'us',
+      minInstalls = '', maxInstalls = '', minRating = '', minReviews = '',
+      price = '', contentRating = '', releasedAfter = '', releasedBefore = '',
+      allCategories = '',
     } = req.query;
 
-    const sortMap = {
-      '1': undefined,              // relevance (default)
-      '2': gplay.sort.RATING,
-      '3': gplay.sort.NEWEST,
-    };
-
-    let results = [];
-    const wantsDateFilter = releasedAfter || releasedBefore;
-    const fetchNum = Math.min(parseInt(num) || 50, 250);
-    const qTerm = q.trim();
-    const searchAllCategories = allCategories === 'true' && !category;
-    const needsDetailEnrichment = Boolean(wantsDateFilter || contentRating || (qTerm && category));
-
-    if (searchAllCategories) {
-      const categoryIds = categoryIdsForDiscovery();
-      const targetCandidates = candidateTargetForAllCategoryDiscovery(fetchNum, wantsDateFilter);
-
-      if (qTerm) {
-        const keywordTarget = Math.min(Math.max(fetchNum * 2, 20), 80);
-        results = await searchCandidates({
-          term: qTerm,
-          num: keywordTarget,
-          lang,
-          country,
-          ...(sortMap[sort] != null ? { sort: sortMap[sort] } : {}),
-          fullDetail: false,
-        }, { detailFallback: true });
-      } else if (wantsDateFilter) {
-        const tasks = categoryIds.flatMap(categoryId =>
-          allCategorySearchTerms(categoryId).map(term => ({ categoryId, term }))
-        );
-        const perTerm = Math.max(2, Math.ceil(targetCandidates / tasks.length));
-        const batches = await mapLimit(tasks, 6, ({ categoryId, term }) =>
-          searchCandidates({
-            term,
-            num: Math.min(perTerm, 12),
-            lang,
-            country,
-            sort: gplay.sort.NEWEST,
-            category: categoryValue(categoryId),
-            fullDetail: false,
-          }, { allowFallback: false }).catch(() => [])
-        );
-        results = uniqueByAppId(batches).slice(0, targetCandidates);
-        if (!results.length) {
-          const fallbackBatches = await mapLimit(termsForDateDiscovery(''), 6, term =>
-            searchCandidates({
-              term,
-              num: Math.ceil(targetCandidates / termsForDateDiscovery('').length),
-              lang,
-              country,
-              sort: gplay.sort.NEWEST,
-              fullDetail: false,
-            }).catch(() => [])
-          );
-          results = uniqueByAppId(fallbackBatches).slice(0, targetCandidates);
-        }
-      } else {
-        const collections = [
-          gplay.collection.TOP_FREE,
-          gplay.collection.TOP_PAID,
-          gplay.collection.GROSSING,
-        ];
-        const tasks = categoryIds.flatMap(categoryId =>
-          collections.map(collection => ({ categoryId, collection }))
-        );
-        const perTask = Math.max(1, Math.ceil(targetCandidates / tasks.length));
-        const batches = await mapLimit(tasks, 8, ({ categoryId, collection }) =>
-          gplay.list({
-            collection,
-            category: categoryValue(categoryId),
-            num: Math.min(perTask + 1, 10),
-            lang,
-            country,
-          }).catch(() => [])
-        );
-        results = uniqueByAppId(batches).slice(0, targetCandidates);
-      }
-    } else if (qTerm) {
-      // ── keyword search ──────────────────────────────────────────────────
-      results = await searchCandidates({
-        term: qTerm,
-        num: wantsDateFilter ? Math.min(Math.max(fetchNum * 4, 80), 220) : fetchNum,
-        lang,
-        country,
-        ...(sortMap[sort] != null ? { sort: sortMap[sort] } : {}),
-        ...(category ? { category: categoryValue(category) } : {}),
-        fullDetail: false,
-      }, { detailFallback: !wantsDateFilter });
-    } else if (wantsDateFilter) {
-      // ── no keyword + date filter: gather candidates, then fetch full details ──
-      // gplay.list() returns TOP_FREE/TOP_PAID charts which are dominated by
-      // established apps released years ago — they will never pass a date filter.
-      // Also, gplay.search() does not expose reliable category/date browsing.
-      // Instead we search across multiple discovery terms to get a varied pool.
-      //
-      // Strategy: gather candidate app IDs, fetch app details to get released,
-      // installs and genreId, then let applyFilters do the exact filtering.
-      const broadTerms = termsForDateDiscovery(category);
-
-      const seen = new Set();
-      const targetCandidates = candidateTargetForDateDiscovery(category, fetchNum);
-      const perTerm = Math.ceil(targetCandidates / broadTerms.length); // over-fetch to survive filtering
-
-      const fetches = broadTerms.map(term =>
-        searchCandidates({
-          term,
-          num: Math.min(perTerm, 250),
-          lang,
-          country,
-          sort: gplay.sort.NEWEST,
-          ...(category ? { category: categoryValue(category) } : {}),
-          fullDetail: false,
-        }).catch(() => [])
-      );
-
-      const batches = await Promise.all(fetches);
-      for (const batch of batches) {
-        for (const item of batch) {
-          if (!seen.has(item.appId)) {
-            seen.add(item.appId);
-            results.push(item);
-          }
-        }
-      }
-    } else {
-      // ── no keyword, no date filter: browse top charts ───────────────────
-      const collections = [
-        gplay.collection.TOP_FREE,
-        gplay.collection.TOP_PAID,
-        gplay.collection.GROSSING,
-      ];
-
-      const fetches = collections.map(col =>
-        gplay.list({
-          collection: col,
-          ...(category ? { category: categoryValue(category) } : {}),
-          num: Math.min(Math.ceil(fetchNum / collections.length) + 20, 100),
-          lang,
-          country,
-        }).catch(() => [])
-      );
-
-      const batches = await Promise.all(fetches);
-      const seen = new Set();
-      for (const batch of batches) {
-        for (const item of batch) {
-          if (!seen.has(item.appId)) {
-            seen.add(item.appId);
-            results.push(item);
-          }
-        }
-      }
-    }
-
-    if (needsDetailEnrichment) {
-      const seen = new Set();
-      results = results.filter(item => {
-        if (!item?.appId || seen.has(item.appId)) return false;
-        seen.add(item.appId);
-        return true;
-      });
-      results = await enrichWithDetails(results, { lang, country });
-    }
-
-    let apps = results.map(pickUseful).filter(Boolean);
-    const scanned = apps.length;
-    apps = applyFilters(apps, {
-      category: needsDetailEnrichment ? category : '',
+    const data = await searchAppsWithRelevance({
+      q,
+      category,
+      sort,
+      num,
+      lang,
+      country,
       minInstalls,
       maxInstalls,
       minRating,
@@ -1070,19 +909,10 @@ app.get('/api/search', async (req, res) => {
       contentRating,
       releasedAfter,
       releasedBefore,
+      allCategories,
     });
 
-    // honour requested num after filtering
-    const limit = Math.min(parseInt(num) || 50, 250);
-    apps = apps.slice(0, limit);
-
-    res.json({
-      total: apps.length,
-      apps,
-      enriched: needsDetailEnrichment,
-      scanned,
-      scope: searchAllCategories ? 'all-categories' : 'standard',
-    });
+    res.json(data);
   } catch (err) {
     console.error('Search error:', err.message);
     res.status(500).json({ error: err.message || 'Search failed' });
